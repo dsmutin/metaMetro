@@ -91,6 +91,8 @@ src/metametro/bench/scoring/{type}/{bench_name}/
 | `mock_chain` | MetaMetro six-node compaction fixture |
 | `synthetic_reads_2` | Two synthetic genomes, in-process reads, k=8 |
 
+On `bubble_reads_2` and `synthetic_reads_2` the CFA node `coverage` is how often the node k-mer occurs in all reads of the bench.
+
 Legacy names such as `strain_bubble` resolve to the canonical name.
 
 Pinned NCBI communities and external contracts are in the same registry. `metametro benchbuild NAME` downloads and assembles when `datasets`, Samovar, and MEGAHIT are on `PATH`. `metametro benchbuild NAME --contract-only` writes the accession pin and the lognormal abundance table and does not invent a graph. A second contract build has the same `identity.sha256`.

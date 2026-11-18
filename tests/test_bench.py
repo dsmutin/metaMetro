@@ -105,6 +105,20 @@ def test_reads_benchmark_keeps_genome_ids_out_of_the_graph(tmp_path: Path) -> No
     assert "strain_A" not in (result.outdir / "cfa" / "colors.tsv").read_text(encoding="utf-8")
 
 
+@pytest.mark.parametrize("name", ["bubble_reads_2", "synthetic_reads_2"])
+def test_reads_benchmark_has_node_coverage(tmp_path: Path, name: str) -> None:
+    """Read benchmarks carry k-mer read coverage on every CFA node."""
+    result = build(name, outdir=tmp_path / name)
+    cfa = load_cfa(result.outdir / "cfa")
+    assert "coverage" in cfa.node_header
+    k = cfa.metadata["k"]
+    reads = [line.strip() for line in (result.outdir / "reads" / "reads.fastq").read_text().splitlines()[1::4]]
+    total = sum(max(len(read) - k + 1, 0) for read in reads)
+    values = [float(row["coverage"]) for row in cfa.nodes]
+    assert min(values) >= 1.0
+    assert sum(values) == total
+
+
 def test_synthetic_fifty_is_deterministic(tmp_path: Path) -> None:
     """The 50-bubble generator does not depend on the output path."""
     left = build("bubble_strain_3_n50", outdir=tmp_path / "left")

@@ -25,6 +25,22 @@ def _truth(outdir: Path, rows: list[dict[str, str]]) -> None:
     write_tsv(destination, header, rows)
 
 
+def _with_kmer_coverage(graph: CfaGraph, reads: list[tuple[str, str]], k: int) -> CfaGraph:
+    """Set node ``coverage`` to how often the node k-mer occurs in all reads."""
+    counts: dict[str, int] = {}
+    for _, sequence in reads:
+        for index in range(len(sequence) - k + 1):
+            kmer = sequence[index : index + k]
+            counts[kmer] = counts.get(kmer, 0) + 1
+    for row in graph.nodes:
+        row["coverage"] = str(float(counts.get(graph.sequences[row["node_id"]], 0)))
+    graph.node_header = [*graph.node_header, "coverage"]
+    features = dict(graph.metadata.get("features") or {})
+    features["node"] = {**dict(features.get("node") or {}), "coverage": "float"}
+    graph.metadata["features"] = features
+    return graph
+
+
 def _one(bubble_id: str, action: str, strains: str, source: str, sink: str, branches: str) -> dict[str, str]:
     return {
         "bubble_id": bubble_id,
@@ -118,7 +134,7 @@ def prepare_synthetic_reads_2(outdir: Path, ctx: BuildContext) -> CfaGraph:
     _, meta = read_tsv(paths["metadata"])
     ctx.reads = [(row["read_id"], row["sample_id"], sequences[row["read_id"]]) for row in meta]
     ctx.samples = ["sample_1", "sample_2"]
-    return dbg_from_sequences(fastq, k=8, graph_id="synthetic_reads_2")
+    return _with_kmer_coverage(dbg_from_sequences(fastq, k=8, graph_id="synthetic_reads_2"), fastq, 8)
 
 
 def prepare_bubble_reads_2(outdir: Path, ctx: BuildContext) -> CfaGraph:
@@ -156,4 +172,4 @@ def prepare_bubble_reads_2(outdir: Path, ctx: BuildContext) -> CfaGraph:
         ctx.reads.append((read_id, sample, sequence))
     ctx.samples = ["sample_A", "sample_B"]
     ctx.min_edge_kmer_density = 1
-    return dbg_from_sequences(fastq, k=5, graph_id="bubble_reads_2")
+    return _with_kmer_coverage(dbg_from_sequences(fastq, k=5, graph_id="bubble_reads_2"), fastq, 5)
