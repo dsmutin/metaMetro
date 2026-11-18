@@ -2,7 +2,7 @@
 
 The script resumes. It does not download a genome that is already extracted,
 and it does not rebuild a database whose index already exists. Large outputs
-stay in ``data/`` and ``examples/heldout_genera/work/``.
+stay in ``data/raw/`` and the bench work directory under ``data/bench/``.
 """
 
 from __future__ import annotations
@@ -241,90 +241,79 @@ def _validate_genomes(rows: list[dict[str, str]], fasta_dir: Path, report_path: 
     checksum_path = WORK / "download" / "checksums.txt"
     checksum_path.parent.mkdir(parents=True, exist_ok=True)
     checksum_path.write_text("\n".join(checksums) + "\n", encoding="utf-8")
-    _write_data_reports(len(rows), datasets_version, today)
+    _write_data_reports(rows, datasets_version, today)
 
 
-def _write_data_reports(n_genomes: int, datasets_version: str, today: str) -> None:
+_HELDOUT_NOTES = (
+    "`eco_coli` sim `GCF_000952955.1` had no tax_id in the summary used to pin the table; the download report supplies it.",
+    "Two RefSeq references (`Streptococcus agalactiae`, `Streptococcus thermophilus`) had no strain name in the summary.",
+    "Four of the five Escherichia pairs are not E. coli.",
+    "Shigella has two flexneri pairs (species 623 lineage and flexneri 2a taxid 42897). Species-rank scores add those read counts.",
+    "`Pseudomonas stutzeri` was not used: the NCBI summary for that taxid returned `Stutzerimonas stutzeri`.",
+)
+"""Findings recorded when ``bacteria_species_20_heldout`` was pinned. Only that bench prints them."""
+
+
+def _shown_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+def _write_data_reports(rows: list[dict[str, str]], datasets_version: str, today: str) -> None:
+    """Write the acquisition report and dataset audit for the configured bench and pin."""
+    n_genomes = len(rows)
+    n_sim = sum(1 for row in rows if row["role"] == "sim")
+    n_db = sum(1 for row in rows if row["role"] == "db")
+    n_pairs = len({row["pair_id"] for row in rows})
+    genera = sorted({row["genus"] for row in rows if row.get("genus")})
+    pin = _shown_path(EXAMPLE / "accessions.tsv")
+    notes = list(_HELDOUT_NOTES) if GRAPH_ID == "bacteria_species_20_heldout" else []
     acquisition = WORK / "download" / "acquisition_report.md"
     acquisition.parent.mkdir(parents=True, exist_ok=True)
     acquisition.write_text(
         "\n".join(
             [
-                "# Acquisition report",
+                f"# Acquisition report: {GRAPH_ID}",
                 "",
                 f"**Date:** {today}",
                 "",
-                f"Downloaded {n_genomes} NCBI assembly accessions listed in `examples/heldout_genera/accessions.tsv`.",
+                f"Downloaded {n_genomes} NCBI assembly accessions listed in `{pin}`.",
                 f"Method: `{datasets_version}` `datasets download genome accession --include genome`.",
                 "The datasets summary used to choose the accessions did not include a per-file FTP URL, so `download_url` is empty.",
                 "Technical validation: each extracted FASTA is non-empty and its SHA-256 is in `checksums.txt` next to this report.",
                 "Biological validation: the assembly-report organism name starts with the requested genus, and the two assemblies in each pair have different sequence digests.",
-                "No download failed. No assembly was skipped as already validated, because Phase 0 found no manifest.",
+                "No download failed.",
                 "",
             ]
         ),
         encoding="utf-8",
     )
     audit = WORK / "download" / "dataset-audit.md"
-    audit.parent.mkdir(parents=True, exist_ok=True)
-    audit.write_text(
-        "\n".join(
-            [
-                "# Dataset Audit Report",
-                "",
-                f"**Date:** {today}",
-                "**Auditor:** data-preparation orchestrator",
-                "**Overall status:** Ready with warnings",
-                "",
-                "## 1. Data inventory",
-                "",
-                "| File | Path | Rows × Cols | Notes |",
-                "|------|------|-------------|-------|",
-                f"| Pinned accessions | examples/heldout_genera/accessions.tsv | {n_genomes} × 11 | 20 sim / 20 db |",
-                "| FASTA | data/raw/fasta/ | 40 files | one NCBI assembly each |",
-                "| Manifest | download_manifest.tsv | 40 × 11 | SHA-256 recorded |",
-                "",
-                "## 2. Metadata completeness",
-                "",
-                "Every accession has a genus, a role, and an organism name from the NCBI datasets summary.",
-                "`eco_coli` sim `GCF_000952955.1` had no tax_id in the summary used to pin the table; the download report supplies it.",
-                "Two RefSeq references (`Streptococcus agalactiae`, `Streptococcus thermophilus`) had no strain name in the summary.",
-                "",
-                "## 3. Sample identifiers",
-                "",
-                "Unique assembly accessions: yes. Sim keys after dropping the version do not collide.",
-                "",
-                "## 4. Class balance",
-                "",
-                "Four genera, five pairs each. Four of the five Escherichia pairs are not E. coli.",
-                "Shigella has two flexneri pairs (species 623 lineage and flexneri 2a taxid 42897). Species-rank scores add those read counts.",
-                "",
-                "## 5. Duplicates and missing values",
-                "",
-                "No duplicate accessions. Pair sequence digests differ, so a GenBank twin of a RefSeq assembly was not kept.",
-                "",
-                "## 6. Outliers",
-                "",
-                "Assembly length is the NCBI `total_sequence_length` recorded in the accession table (about 1.7–7.1 Mb).",
-                "Read depth is not a property of these assemblies; the simulated sample is 100000 paired fragments.",
-                "",
-                "## 7. Sequencing layout",
-                "",
-                "Not applicable to the downloaded assemblies. InSilicoSeq HiSeq paired reads are created later by Samovar.",
-                "",
-                "## 8. Repository consistency",
-                "",
-                "All 40 rows are NCBI Assembly accessions retrieved with the datasets CLI. Organism genus matches the request.",
-                "`Pseudomonas stutzeri` was not used: the NCBI summary for that taxid returned `Stutzerimonas stutzeri`.",
-                "",
-                "## 9. Decision",
-                "",
-                "Ready with warnings for the held-out simulation. The warnings are missing strain names on two references and the shared Shigella flexneri species rank.",
-                "",
-            ]
-        ),
-        encoding="utf-8",
-    )
+    lines = [
+        f"# Dataset Audit Report: {GRAPH_ID}",
+        "",
+        f"**Date:** {today}",
+        "",
+        "## 1. Data inventory",
+        "",
+        "| File | Path | Rows × Cols | Notes |",
+        "|------|------|-------------|-------|",
+        f"| Pinned accessions | {pin} | {n_genomes} × {len(rows[0]) if rows else 0} | {n_sim} sim / {n_db} db, {n_pairs} pairs |",
+        f"| FASTA | data/raw/fasta/ | {n_genomes} files | one NCBI assembly each |",
+        f"| Manifest | download_manifest.tsv | {n_genomes} × 11 | SHA-256 recorded |",
+        "",
+        "## 2. Checks",
+        "",
+        "Every accession has a genus, a role, and an organism name from the NCBI assembly report.",
+        "Assembly accessions are unique. The two assemblies in each pair have different sequence digests.",
+        f"Genera: {len(genera)}. The simulated sample is {TOTAL_READS} paired fragments, created later by Samovar (InSilicoSeq HiSeq).",
+        "",
+    ]
+    if notes:
+        lines += ["## 3. Notes recorded when this pin was made", ""] + notes + [""]
+    audit.write_text("\n".join(lines), encoding="utf-8")
 
 
 def stage_layout() -> None:

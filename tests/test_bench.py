@@ -258,6 +258,8 @@ def test_download_validation_writes_only_under_the_bench_work_dir(tmp_path: Path
     work = tmp_path / "data" / "bench" / "toy" / "work"
     monkeypatch.setattr(pipe, "ROOT", tmp_path)
     monkeypatch.setattr(pipe, "WORK", work)
+    monkeypatch.setattr(pipe, "GRAPH_ID", "toy_community")
+    monkeypatch.setattr(pipe, "EXAMPLE", tmp_path / "data" / "bench" / "toy" / "contract")
     fasta_dir = tmp_path / "data" / "raw" / "fasta"
     fasta_dir.mkdir(parents=True)
     rows = []
@@ -276,6 +278,14 @@ def test_download_validation_writes_only_under_the_bench_work_dir(tmp_path: Path
     assert not (tmp_path / "data" / "manifests").exists()
     assert not (tmp_path / "data" / "checksums").exists()
     assert not (tmp_path / "docs").exists()
+    audit = (work / "download" / "dataset-audit.md").read_text(encoding="utf-8")
+    acquisition = (work / "download" / "acquisition_report.md").read_text(encoding="utf-8")
+    assert "toy_community" in audit and "toy_community" in acquisition
+    assert "data/bench/toy/contract/accessions.tsv" in acquisition
+    assert "1 sim / 1 db, 1 pairs" in audit
+    assert "| 2 files |" in audit
+    for stale in ("heldout_genera", "20 sim", "Shigella", "40 files"):
+        assert stale not in audit + acquisition
 
 
 def test_derived_community_reads_the_downloading_ancestor_report(tmp_path: Path) -> None:
