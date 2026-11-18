@@ -247,3 +247,32 @@ def test_community_execute_stops_without_tools(tmp_path: Path, monkeypatch: pyte
     with pytest.raises(ContractError, match="needs these programs"):
         build("bacteria_species_20_heldout", outdir=tmp_path / "held", execute=True)
 
+
+
+def test_download_validation_writes_only_under_the_bench_work_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The download manifest, checksums, and reports stay out of tracked repo files."""
+    import json
+
+    from metametro.bench.data.universal import ncbi_pipeline as pipe
+
+    work = tmp_path / "data" / "bench" / "toy" / "work"
+    monkeypatch.setattr(pipe, "ROOT", tmp_path)
+    monkeypatch.setattr(pipe, "WORK", work)
+    fasta_dir = tmp_path / "data" / "raw" / "fasta"
+    fasta_dir.mkdir(parents=True)
+    rows = []
+    records = []
+    for role, accession, sequence in (("sim", "GCF_000000001.1", "ACGTACGTAA"), ("db", "GCF_000000002.1", "TTGCATGCAA")):
+        (fasta_dir / f"{accession}.fna").write_text(f">{accession}\n{sequence}\n", encoding="utf-8")
+        rows.append({"accession": accession, "genus": "Escherichia", "pair_id": "p1", "role": role})
+        records.append({"accession": accession, "organism": {"organismName": "Escherichia coli", "taxId": 562}})
+    report = tmp_path / "data" / "raw" / "report.jsonl"
+    report.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+    zip_path = tmp_path / "data" / "raw" / "ncbi.zip"
+    zip_path.write_bytes(b"zip")
+    pipe._validate_genomes(rows, fasta_dir, report, zip_path, "datasets 0")
+    written = sorted(path.name for path in (work / "download").iterdir())
+    assert written == ["acquisition_report.md", "checksums.txt", "dataset-audit.md", "download_manifest.tsv"]
+    assert not (tmp_path / "data" / "manifests").exists()
+    assert not (tmp_path / "data" / "checksums").exists()
+    assert not (tmp_path / "docs").exists()

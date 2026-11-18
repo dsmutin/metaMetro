@@ -235,17 +235,18 @@ def _validate_genomes(rows: list[dict[str, str]], fasta_dir: Path, report_path: 
     for pair_id, digests in sorted(by_pair.items()):
         if digests.get("sim") == digests.get("db"):
             raise SystemExit(f"{pair_id} sim and db assemblies have the same sequence digest")
-    manifest_path = ROOT / "data" / "manifests" / "download_manifest.tsv"
+    manifest_path = WORK / "download" / "download_manifest.tsv"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text("\n".join(manifest) + "\n", encoding="utf-8")
-    checksum_path = ROOT / "data" / "checksums" / "checksums.txt"
+    checksum_path = WORK / "download" / "checksums.txt"
     checksum_path.parent.mkdir(parents=True, exist_ok=True)
     checksum_path.write_text("\n".join(checksums) + "\n", encoding="utf-8")
     _write_data_reports(len(rows), datasets_version, today)
 
 
 def _write_data_reports(n_genomes: int, datasets_version: str, today: str) -> None:
-    acquisition = ROOT / "data" / "manifests" / "acquisition_report.md"
+    acquisition = WORK / "download" / "acquisition_report.md"
+    acquisition.parent.mkdir(parents=True, exist_ok=True)
     acquisition.write_text(
         "\n".join(
             [
@@ -256,7 +257,7 @@ def _write_data_reports(n_genomes: int, datasets_version: str, today: str) -> No
                 f"Downloaded {n_genomes} NCBI assembly accessions listed in `examples/heldout_genera/accessions.tsv`.",
                 f"Method: `{datasets_version}` `datasets download genome accession --include genome`.",
                 "The datasets summary used to choose the accessions did not include a per-file FTP URL, so `download_url` is empty.",
-                "Technical validation: each extracted FASTA is non-empty and its SHA-256 is in `data/checksums/checksums.txt`.",
+                "Technical validation: each extracted FASTA is non-empty and its SHA-256 is in `checksums.txt` next to this report.",
                 "Biological validation: the assembly-report organism name starts with the requested genus, and the two assemblies in each pair have different sequence digests.",
                 "No download failed. No assembly was skipped as already validated, because Phase 0 found no manifest.",
                 "",
@@ -264,7 +265,7 @@ def _write_data_reports(n_genomes: int, datasets_version: str, today: str) -> No
         ),
         encoding="utf-8",
     )
-    audit = ROOT / "docs" / "dataset-audit.md"
+    audit = WORK / "download" / "dataset-audit.md"
     audit.parent.mkdir(parents=True, exist_ok=True)
     audit.write_text(
         "\n".join(
@@ -281,7 +282,7 @@ def _write_data_reports(n_genomes: int, datasets_version: str, today: str) -> No
                 "|------|------|-------------|-------|",
                 f"| Pinned accessions | examples/heldout_genera/accessions.tsv | {n_genomes} × 11 | 20 sim / 20 db |",
                 "| FASTA | data/raw/fasta/ | 40 files | one NCBI assembly each |",
-                "| Manifest | data/manifests/download_manifest.tsv | 40 × 11 | SHA-256 recorded |",
+                "| Manifest | download_manifest.tsv | 40 × 11 | SHA-256 recorded |",
                 "",
                 "## 2. Metadata completeness",
                 "",
