@@ -145,6 +145,27 @@ def test_external_baselines_have_stable_commands(tmp_path) -> None:
         megahit_command(tmp_path / "reads.fastq", tmp_path / "asm", k=20)
 
 
+def test_flye_and_minimap2_commands(tmp_path) -> None:
+    """Flye ONT assembly and minimap2 PAF argv are fixed and validated."""
+    from metametro.contracts.external import flye_command, minimap2_command
+
+    assert flye_command(tmp_path / "ont.fastq", tmp_path / "flye", threads=8) == [
+        "flye", "--nano-raw", str(tmp_path / "ont.fastq"), "--out-dir", str(tmp_path / "flye"), "--threads", "8", "--meta",
+    ]
+    hq = flye_command("r.fq", "out", mode="nano-hq", meta=False)
+    assert hq[1] == "--nano-hq" and "--meta" not in hq
+    with pytest.raises(ValueError):
+        flye_command("r.fq", "out", mode="pacbio-raw")
+    assert minimap2_command("ont.fa", "contigs.fa", threads=2) == [
+        "minimap2", "-x", "asm5", "-c", "-t", "2", "ont.fa", "contigs.fa",
+    ]
+    assert "-c" not in minimap2_command("a", "b", preset="map-ont", cigar=False)
+    with pytest.raises(ValueError):
+        minimap2_command("a", "b", preset="asm1")
+    with pytest.raises(ValueError):
+        minimap2_command("a", "b", threads=0)
+
+
 def test_fastg_keeps_bubbles_and_oriented_edges(tmp_path) -> None:
     """MEGAHIT FASTG edges overlap by assembly k and keep a branch that reconverges."""
     from metametro.contracts.assembly import directed_bubble_sources, fastg_to_cfa, strand_junction_counts

@@ -30,7 +30,13 @@ from metametro.contracts.colouring import (
 from metametro.contracts.composition import colour_by_composition, kmeans_onehot
 from metametro.contracts.decaying import colour_decaying, decaying_distributions
 from metametro.contracts.ds import run_ds
-from metametro.contracts.external import contig2fastg_command, megahit_command, samovar_generate_command
+from metametro.contracts.external import (
+    contig2fastg_command,
+    flye_command,
+    megahit_command,
+    minimap2_command,
+    samovar_generate_command,
+)
 from metametro.contracts.versions import CONTRACTS
 
 __all__ = [
@@ -50,7 +56,9 @@ __all__ = [
     "decaying_distributions",
     "kmeans_onehot",
     "load_genomes",
+    "flye_command",
     "megahit_command",
+    "minimap2_command",
     "paint_namespace",
     "parse_kaiju_output",
     "parse_kraken2_output",

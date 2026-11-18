@@ -68,6 +68,54 @@ def megahit_command(
     ]
 
 
+FLYE_READ_MODES = ("nano-raw", "nano-hq")
+MINIMAP2_PRESETS = ("asm5", "asm10", "asm20", "map-ont", "map-hifi", "map-pb", "sr")
+
+
+def flye_command(
+    reads: str | Path,
+    output_dir: str | Path,
+    *,
+    mode: str = "nano-raw",
+    meta: bool = True,
+    threads: int = 4,
+    flye: str = "flye",
+) -> list[str]:
+    """Argv for a Flye assembly of ONT reads. ``mode`` is ``nano-raw`` or ``nano-hq``."""
+    if mode not in FLYE_READ_MODES:
+        raise ValueError(f"Flye mode must be one of {', '.join(FLYE_READ_MODES)}")
+    if threads < 1:
+        raise ValueError("Flye threads must be >= 1")
+    argv = [flye, f"--{mode}", str(reads), "--out-dir", str(output_dir), "--threads", str(threads)]
+    if meta:
+        argv.append("--meta")
+    return argv
+
+
+def minimap2_command(
+    target: str | Path,
+    query: str | Path,
+    *,
+    preset: str = "asm5",
+    cigar: bool = True,
+    threads: int = 4,
+    minimap2: str = "minimap2",
+) -> list[str]:
+    """Argv for minimap2 that writes PAF to stdout; pass it to ``run_command_to_file``.
+
+    ``cigar=True`` adds ``-c`` so each PAF line carries base-level alignment and
+    identity can be read from columns 10 and 11.
+    """
+    if preset not in MINIMAP2_PRESETS:
+        raise ValueError(f"minimap2 preset must be one of {', '.join(MINIMAP2_PRESETS)}")
+    if threads < 1:
+        raise ValueError("minimap2 threads must be >= 1")
+    argv = [minimap2, "-x", preset]
+    if cigar:
+        argv.append("-c")
+    return argv + ["-t", str(threads), str(target), str(query)]
+
+
 def contig2fastg_command(
     contigs: str | Path,
     k: int,
