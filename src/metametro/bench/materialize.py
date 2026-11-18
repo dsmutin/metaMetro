@@ -1,4 +1,7 @@
-"""Write CFA, CDBG, and CGT after every applicable colouring."""
+"""Write CFA, CDBG, and CGT after every applicable colouring.
+
+The CGT carries the feature layer from ``metametro.bench.features``.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from metametro.bench.colourings import BuildContext, applicable
+from metametro.bench.features import node_feature_layer
 from metametro.bench.identity import graph_identity, write_identity
 from metametro.bench.leakage import assert_cgt_no_target_leak, assert_no_target_leak
 from metametro.converters.cdbg_to_cgt import cdbg_to_cgt
@@ -46,7 +50,13 @@ def materialize(graph: CfaGraph, outdir: Path, ctx: BuildContext) -> Materialize
     dump_cfa(coloured, outdir / "cfa")
     cdbg = cfa_to_cdbg(coloured)
     dump_cdbg(cdbg, outdir / "cdbg")
-    cgt = cdbg_to_cgt(cdbg, node_feature_names=[], edge_feature_names=[])
+    node_features, node_names = node_feature_layer(cdbg, coloured, k=ctx.composition_k)
+    cgt = cdbg_to_cgt(
+        cdbg,
+        node_features=node_features if node_names else None,
+        node_feature_names=node_names,
+        edge_feature_names=[],
+    )
     assert_cgt_no_target_leak(cgt)
     assert_cgt_matches_cdbg(cgt, cdbg)
     dump_cgt(cgt, outdir / "cgt")
@@ -63,6 +73,7 @@ def materialize(graph: CfaGraph, outdir: Path, ctx: BuildContext) -> Materialize
             "n_nodes": len(coloured.nodes),
             "n_edges": len(coloured.edges),
             "n_unitigs": len(cdbg.unitigs),
+            "features": {"kmer_k": ctx.composition_k, "node": len(node_names)},
         },
     )
     return Materialized(

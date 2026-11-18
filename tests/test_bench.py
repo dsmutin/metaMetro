@@ -300,3 +300,24 @@ def test_derived_community_reads_the_downloading_ancestor_report(tmp_path: Path)
         _require_parent_fasta(spec, tmp_path)
     expected.write_text("{}\n", encoding="utf-8")
     _require_parent_fasta(spec, tmp_path)
+
+
+@pytest.mark.parametrize("name", ["bubble_reads_2", "mock_chain"])
+def test_bench_cgt_has_a_feature_layer_without_new_colours(tmp_path: Path, name: str) -> None:
+    """The CGT carries k=4 composition plus coverage features; colours are untouched."""
+    from metametro.bench import load_bench_cgt
+
+    result = build(name, outdir=tmp_path / name)
+    stored = load_cgt(result.outdir / "cgt")
+    names = stored.metadata["node_feature_names"]
+    assert len([item for item in names if item.startswith("kmer:k4:")]) == 136
+    assert names[-1] == "coverage"
+    assert stored.node_features.shape == (stored.num_nodes, 137)
+    assert np.all(np.isfinite(stored.node_features))
+    loaded = load_bench_cgt(result.outdir)
+    plain = load_bench_cgt(result.outdir, features=False)
+    assert np.array_equal(loaded.node_features, stored.node_features)
+    assert plain.node_features.shape == (stored.num_nodes, 0)
+    assert np.array_equal(plain.node_colors, stored.node_colors)
+    assert np.array_equal(loaded.node_colors, stored.node_colors)
+    assert stored.node_colors.size and stored.node_colors.any()

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Sequence
 
 from metametro.bench.colourings import colouring_namespace
+from metametro.bench.features import DEFAULT_K, node_feature_layer
 from metametro.contracts.colour_filter import filter_colours
 from metametro.converters.cdbg_to_cgt import cdbg_to_cgt
 from metametro.errors import ContractError
@@ -18,6 +19,7 @@ from metametro.formats.cdbg.model import Cdbg
 from metametro.formats.cfa.io import load_cfa
 from metametro.formats.cfa.model import CfaGraph
 from metametro.formats.cgt.model import Cgt
+from metametro.tables import read_yaml
 
 
 def namespaces_for(colourings: Sequence[str]) -> list[str]:
@@ -58,11 +60,30 @@ def load_bench_cdbg(outdir: Path, *, namespaces: Sequence[str] | None = None) ->
     return graph
 
 
-def load_bench_cgt(outdir: Path, *, namespaces: Sequence[str] | None = None) -> Cgt:
+def load_bench_cgt(
+    outdir: Path,
+    *,
+    namespaces: Sequence[str] | None = None,
+    features: bool = True,
+) -> Cgt:
     """Load a CGT. Namespace selection is applied on the CDBG, then retensorised.
 
     A stored CGT has no colour dictionary, so a namespace filter cannot be
-    applied to the ``.npy`` masks directly.
+    applied to the ``.npy`` masks directly. ``features=True`` rebuilds the
+    feature layer (k-mer composition and coverage) in ``node_features`` with the
+    ``k`` recorded in ``manifest.yaml``. ``features=False`` gives an empty
+    ``node_features`` as before. Colours do not depend on this flag.
     """
     cdbg = load_bench_cdbg(outdir, namespaces=namespaces)
-    return cdbg_to_cgt(cdbg, node_feature_names=[], edge_feature_names=[])
+    if not features:
+        return cdbg_to_cgt(cdbg, node_feature_names=[], edge_feature_names=[])
+    manifest_path = Path(outdir) / "manifest.yaml"
+    manifest = read_yaml(manifest_path) if manifest_path.is_file() else {}
+    k = int((manifest.get("features") or {}).get("kmer_k", DEFAULT_K))
+    node_features, node_names = node_feature_layer(cdbg, load_cfa(Path(outdir) / "cfa"), k=k)
+    return cdbg_to_cgt(
+        cdbg,
+        node_features=node_features if node_names else None,
+        node_feature_names=node_names,
+        edge_feature_names=[],
+    )
