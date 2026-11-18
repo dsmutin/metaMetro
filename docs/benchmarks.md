@@ -14,7 +14,7 @@ metametro benchbuild bubble_strain_2 --outdir /path/to/empty_dir
 metametro benchbuild bubble_strain_2 --colouring as_built
 ```
 
-`--all` builds every in-process graph and writes a contract for every community and external benchmark. It does not download genomes or call R. `--all --execute` also downloads and assembles those. A directory that already has `manifest.yaml` and `identity.sha256` is left unchanged.
+`--all` builds every in-process graph and writes a contract for every community and external benchmark. It does not download genomes or call R. `--all --execute` also downloads and assembles those. A single benchmark is different: `metametro benchbuild <name>` downloads and assembles by default, and `--contract-only` writes only the contract. `--execute` has an effect only together with `--all`. A directory that already has `manifest.yaml` and `identity.sha256` is left unchanged.
 
 The default output directory is
 

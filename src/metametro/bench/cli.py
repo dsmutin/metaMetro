@@ -26,7 +26,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--execute",
         action="store_true",
-        help="with --all, also download and assemble community and external benchmarks",
+        help=(
+            "with --all, also download and assemble community and external benchmarks; "
+            "ignored for a single benchmark, which downloads and assembles unless --contract-only"
+        ),
     )
     parser.add_argument("--outdir", type=Path, default=None, help="output directory (default: data/bench/...)")
     parser.add_argument(
