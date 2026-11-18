@@ -1,6 +1,6 @@
 name: full tests
 
-# Optional pytest, toy example, and vignettes/examples.
+# Optional pytest, toy example, and extra examples.
 # Not used on ordinary push/PR (those run required-tests.yml).
 
 on:
@@ -42,7 +42,7 @@ jobs:
       - name: Toy example
         timeout-minutes: 15
         run: python examples/toy/run.py
-      - name: Extra examples and vignettes
+      - name: Extra examples
         timeout-minutes: 60
         run: |
           set -euo pipefail
@@ -51,8 +51,5 @@ jobs:
             case "$s" in
               examples/toy/run.py) continue ;;
             esac
-            if [[ "$s" == *.py ]]; then python "$s"; else bash "$s"; fi
-          done
-          for s in vignettes/*.sh vignettes/*.py; do
             if [[ "$s" == *.py ]]; then python "$s"; else bash "$s"; fi
           done
