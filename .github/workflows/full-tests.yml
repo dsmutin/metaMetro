@@ -1,9 +1,12 @@
 name: full tests
 
 # Optional pytest, toy example, and extra examples.
-# Not used on ordinary push/PR (those run required-tests.yml).
+# Runs on push to main, on a published release, and on demand.
+# Pull requests run only required-tests.yml.
 
 on:
+  push:
+    branches: [main]
   release:
     types: [published]
   workflow_dispatch:

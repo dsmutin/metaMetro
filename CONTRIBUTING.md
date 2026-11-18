@@ -33,7 +33,7 @@ Replace baseline bodies with real implementations. Keep the documented return ke
 | Kind | Marker | Command | When |
 |------|--------|---------|------|
 | Required | `mandatory` | `pytest -m mandatory` | every commit; GitHub Action `required-tests` |
-| Optional | `optional` | `pytest` (all) | release or workflow_dispatch; Action `full-tests` |
+| Optional | `optional` | `pytest` (all) | push to main, release, or workflow_dispatch; Action `full-tests` |
 | Examples | — | `python examples/toy/run.py` | full CI; after features that touch the CLI |
 | Extra examples | — | extra `examples/*/run.py` or `pipeline.sh` | full CI when those files exist |
 
