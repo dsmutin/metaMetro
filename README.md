@@ -61,7 +61,9 @@ python -m pip install --no-deps --no-build-isolation -e .
 
 The last step installs the package into that environment, which gives the `metametro` command and `python -m metametro`. CI runs the same step.
 
-`environment.yml` sets `PYTHONPATH=src` and pins every dependency.
+`environment.yml` sets `PYTHONPATH=src` and pins every Python dependency.
+
+External tools are not in `environment.yml` and are not pinned there: MEGAHIT, Kraken2, Kaiju, minimap2, NCBI `datasets`, Samovar, and AMBER (`amber.py` at tag `v2.0.17-beta`). Install them separately when a benchmark or baseline needs them.
 
 The Contract 7 PyTorch Geometric backend is optional and is not in the required environment:
 
