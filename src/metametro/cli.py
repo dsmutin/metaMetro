@@ -17,7 +17,11 @@ def main(argv: list[str] | None = None) -> int:
         from metametro.bench.cli import main as benchbuild_main
 
         return benchbuild_main(args_in[1:])
-    parser = argparse.ArgumentParser(prog="metametro", description="Metagenomic assembly totally coloured graph representations")
+    parser = argparse.ArgumentParser(
+        prog="metametro",
+        description="Metagenomic assembly totally coloured graph representations",
+        epilog="Subcommands: benchbuild (see `metametro benchbuild --help`)",
+    )
     parser.add_argument("--version", action="store_true", help="print version and exit")
     parser.add_argument("-o", "--output", default="-", help="output path or - for stdout")
     args = parser.parse_args(args_in)
