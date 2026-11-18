@@ -94,6 +94,35 @@ def _report_identity(record: dict) -> tuple[str, str, int]:
     return accession, name, int(tax)
 
 
+LOGGED_TOOLS = ("megahit", "kraken2", "kaiju", "minimap2", "samovar")
+
+
+def tool_versions(tools: tuple[str, ...] = LOGGED_TOOLS) -> dict[str, str]:
+    """Return the first ``--version`` output line of each tool, or ``absent`` when it is not on PATH."""
+    found: dict[str, str] = {}
+    for tool in tools:
+        program = shutil.which(tool)
+        if program is None:
+            found[tool] = "absent"
+            continue
+        try:
+            done = subprocess.run([program, "--version"], capture_output=True, text=True, timeout=120)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            found[tool] = f"unknown ({type(exc).__name__})"
+            continue
+        lines = [line.strip() for line in (done.stdout + "\n" + done.stderr).splitlines() if line.strip()]
+        found[tool] = lines[0] if lines else f"unknown (exit {done.returncode})"
+    return found
+
+
+def log_tool_versions() -> dict[str, str]:
+    """Append external tool versions to ``WORK/commands.log`` and return them."""
+    versions = tool_versions()
+    for tool, version in versions.items():
+        _log(WORK / "commands.log", f"tool version {tool}: {version}")
+    return versions
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -1155,6 +1184,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     order = ["download", "layout", "simulate", "databases", "classify", "assemble", "compare", "plot"]
     selected = order if args.stage == "all" else [args.stage]
+    log_tool_versions()
     for name in selected:
         print(f"stage {name}", flush=True)
         if name == "download":

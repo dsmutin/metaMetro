@@ -28,7 +28,7 @@ That tree is gitignored. A build writes:
 | --- | --- |
 | `cfa/`, `cdbg/`, `cgt/` | The three graph structures |
 | `ground_truth/` | Evaluation labels. Not a model input |
-| `manifest.yaml` | Bench name, colourings, identity |
+| `manifest.yaml` | Bench name, colourings, identity; on an assembled NCBI community also `tools`, the `--version` line of megahit, kraken2, kaiju, minimap2, and samovar (`absent` when not on `PATH`), also written to `work/commands.log`. Not part of the identity |
 | `identity.sha256` | Digest of sequences, topology, and colour sets |
 
 The CGT carries a feature layer in `node_features.npy`, separate from colours: for each unitig, L2-normalised canonical k-mer counts (`kmer:k4:<kmer>`, 136 columns at the default `k=4`) when every unitig has a sequence, and `coverage`, the mean CFA node coverage of the unitig, when the CFA has a `coverage` column. It adds no colour namespace and does not change `node_colors` or `identity.sha256`. `manifest.yaml` records `features.kmer_k`. `load_bench_cgt(outdir)` rebuilds the same layer; `load_bench_cgt(outdir, features=False)` gives an empty feature matrix.

@@ -331,3 +331,33 @@ def test_bench_cgt_has_a_feature_layer_without_new_colours(tmp_path: Path, name:
     assert np.array_equal(plain.node_colors, stored.node_colors)
     assert np.array_equal(loaded.node_colors, stored.node_colors)
     assert stored.node_colors.size and stored.node_colors.any()
+
+
+def test_tool_versions_are_logged_and_absent_tools_are_named(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """``--version`` output goes to commands.log; a tool that is not on PATH is ``absent``."""
+    from metametro.bench.build import _finish_manifest
+    from metametro.bench.data.universal import ncbi_pipeline as pipe
+    from metametro.bench.registry import resolve
+    from metametro.tables import read_yaml
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake = bin_dir / "megahit"
+    fake.write_text("#!/bin/sh\necho 'MEGAHIT v1.2.9' >&2\n", encoding="utf-8")
+    fake.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bin_dir))
+    monkeypatch.setattr(pipe, "WORK", tmp_path / "work")
+    versions = pipe.log_tool_versions()
+    assert versions == {
+        "megahit": "MEGAHIT v1.2.9",
+        "kraken2": "absent",
+        "kaiju": "absent",
+        "minimap2": "absent",
+        "samovar": "absent",
+    }
+    log = (tmp_path / "work" / "commands.log").read_text(encoding="utf-8")
+    assert "tool version megahit: MEGAHIT v1.2.9" in log
+    assert "tool version kaiju: absent" in log
+    spec = resolve("bacteria_species_20_heldout")
+    _finish_manifest(spec, tmp_path / "bench", status="built", identity="x", colourings=(), requested=spec.name, tools=versions)
+    assert read_yaml(tmp_path / "bench" / "manifest.yaml")["tools"] == versions

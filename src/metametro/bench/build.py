@@ -117,6 +117,7 @@ def _finish_manifest(
     identity: str,
     colourings: tuple[str, ...],
     requested: str,
+    tools: dict[str, str] | None = None,
 ) -> None:
     manifest = {
         "bench": spec.name,
@@ -129,6 +130,8 @@ def _finish_manifest(
     }
     if requested != spec.name:
         manifest["requested_name"] = requested
+    if tools is not None:
+        manifest["tools"] = dict(tools)
     write_yaml(destination / "manifest.yaml", manifest)
 
 
@@ -184,6 +187,9 @@ def _community(
         )
     require_programs(spec, ("datasets", "samovar", "megahit", "megahit_toolkit"))
     graph = _assemble_community(spec, destination)
+    from metametro.bench.data.universal import ncbi_pipeline as pipe
+
+    tools = pipe.log_tool_versions()
     ctx = _community_context(spec, destination, colourings)
     made = materialize(graph, destination, ctx)
     _finish_manifest(
@@ -193,6 +199,7 @@ def _community(
         identity=made.identity,
         colourings=made.colourings,
         requested=requested,
+        tools=tools,
     )
     return BuildResult(
         spec=spec,
