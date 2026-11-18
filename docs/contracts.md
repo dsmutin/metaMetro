@@ -122,8 +122,11 @@ Output:
 result[]: dense_id, source_id, cfa_node_ids, predicted_label, probability,
           predicted_class, confidence, model_id, model_version
 mapping
-metadata: contract, backend, model_id, model_version, confidence, seed, epochs
+metadata: contract, contract_version, backend, model_id, model_version,
+          confidence, seed, epochs, num_predictions, graph_id
 ```
+
+`run_ds` writes `contract: ds_on_cgt` and `contract_version: "1.0"`. `num_predictions` is the number of result rows, which equals the node count. `graph_id` is copied from the CGT `source.graph_id` metadata and is `None` when the CGT has none.
 
 `predicted_label` and `probability` stay. `predicted_class` is the same integer as `predicted_label`. `confidence` is that class probability. The current models return only a softmax distribution, so confidence is not a separate uncertainty estimate and not an accuracy. `predictions_from_ds` builds one node `GraphPrediction` per result row. Those objects are joinable by `dense_id`, `source_id`, and CFA node ids. They are not written into the CGT. `run_ds` does not emit edge predictions. `edge_prediction` can represent one edge when the caller supplies the class, the probability, the confidence, and a CDBG. It stores the CSR slot and the CFA edge id and does not modify the CGT.
 
