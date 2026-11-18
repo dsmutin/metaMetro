@@ -23,7 +23,7 @@ from metametro.bench.registry import PREPARE, resolve
 from metametro.bench.spec import BenchSpec
 from metametro.contracts.assembly import fastg_to_cfa
 from metametro.errors import ContractError
-from metametro.tables import write_yaml
+from metametro.tables import read_yaml, write_yaml
 
 
 @dataclass(frozen=True)
@@ -132,6 +132,11 @@ def _finish_manifest(
         manifest["requested_name"] = requested
     if tools is not None:
         manifest["tools"] = dict(tools)
+    previous = destination / "manifest.yaml"
+    if status == "built" and previous.is_file():
+        features = read_yaml(previous).get("features")
+        if features is not None:
+            manifest["features"] = features
     write_yaml(destination / "manifest.yaml", manifest)
 
 

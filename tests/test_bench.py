@@ -331,6 +331,9 @@ def test_bench_cgt_has_a_feature_layer_without_new_colours(tmp_path: Path, name:
     assert np.array_equal(plain.node_colors, stored.node_colors)
     assert np.array_equal(loaded.node_colors, stored.node_colors)
     assert stored.node_colors.size and stored.node_colors.any()
+    from metametro.tables import read_yaml
+
+    assert read_yaml(result.outdir / "manifest.yaml")["features"] == {"kmer_k": 4, "node": 137}
 
 
 def test_tool_versions_are_logged_and_absent_tools_are_named(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
