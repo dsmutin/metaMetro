@@ -62,7 +62,10 @@ Starting value: `0.0.1`.
 ```bash
 conda env create -f environment.yml
 conda activate metametro
+python -m pip install --no-deps --no-build-isolation -e .
 ```
+
+The `pip` step installs the package into the conda environment (no dependencies are pulled from PyPI) and gives the `metametro` command, as in CI.
 
 `environment.yml` is the required environment and pins exact versions. `environment-pyg.yml` adds the optional PyTorch Geometric backend (`metametro-pyg`); keep it out of the required environment so `required-tests` stays light. That file cannot reuse the `setuptools` pin because conda-forge `pytorch` requires `setuptools <82`.
 

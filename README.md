@@ -56,7 +56,10 @@ Conda is the only supported install:
 ```bash
 conda env create -f environment.yml
 conda activate metametro
+python -m pip install --no-deps --no-build-isolation -e .
 ```
+
+The last step installs the package into that environment, which gives the `metametro` command and `python -m metametro`. CI runs the same step.
 
 `environment.yml` sets `PYTHONPATH=src` and pins every dependency.
 
@@ -96,7 +99,7 @@ pytest -m mandatory    # every commit
 pytest                 # mandatory and optional
 ```
 
-The mandatory marker selects 157 tests. One further test is marked optional and runs when PyTorch Geometric is installed. Genome-binning AMBER scores call `amber.py` from [CAMI-challenge/AMBER](https://github.com/CAMI-challenge/AMBER) tag `v2.0.17-beta`. Set `AMBER_SRC` to that checkout.
+The mandatory marker selects 158 tests. One further test is marked optional and runs when PyTorch Geometric is installed. Genome-binning AMBER scores call `amber.py` from [CAMI-challenge/AMBER](https://github.com/CAMI-challenge/AMBER) tag `v2.0.17-beta`. Set `AMBER_SRC` to that checkout.
 
 ## License
 

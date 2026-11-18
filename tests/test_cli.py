@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 
 import pytest
 
+from metametro import __version__
 from metametro.cli import main
 
 pytestmark = pytest.mark.mandatory
@@ -24,3 +27,9 @@ def test_cli_baseline_stdout(capsys: pytest.CaptureFixture[str]) -> None:
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "baseline"
     assert payload["ok"] is True
+
+
+def test_python_m_metametro_version() -> None:
+    """``python -m metametro --version`` prints the package version."""
+    done = subprocess.run([sys.executable, "-m", "metametro", "--version"], capture_output=True, text=True, check=True)
+    assert done.stdout.strip() == __version__
