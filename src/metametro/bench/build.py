@@ -214,7 +214,7 @@ def _assemble_community(spec: BenchSpec, destination: Path):
         graph_id=spec.name,
         score_rank=spec.score_rank,
         total_reads=spec.total_reads,
-        report_path=root / "data" / "raw" / f"{spec.name}_assembly_data_report.jsonl",
+        report_path=assembly_report_path(spec, root),
         zip_name=f"ncbi_{spec.name}.zip",
     )
     if spec.parent:
@@ -292,6 +292,18 @@ def _community_context(spec: BenchSpec, destination: Path, colourings: tuple[str
     )
 
 
+def assembly_report_path(spec: BenchSpec, root: Path) -> Path:
+    """Return the NCBI assembly report of the community that downloaded the FASTA.
+
+    A community with a ``parent`` reuses the parent's FASTA and never runs
+    ``datasets``, so it reads the report of its first ancestor without a parent.
+    """
+    source = spec
+    while source.parent:
+        source = resolve(source.parent)
+    return root / "data" / "raw" / f"{source.name}_assembly_data_report.jsonl"
+
+
 def _require_parent_fasta(spec: BenchSpec, root: Path) -> None:
     rows = load_pairs(root / "src" / "metametro" / "bench" / "data" / "pins" / spec.name / "accessions.tsv")
     missing = []
@@ -304,6 +316,9 @@ def _require_parent_fasta(spec: BenchSpec, root: Path) -> None:
         if len(missing) > 8:
             shown += ", ..."
         raise ContractError([f"{spec.name} reuses FASTA from {spec.parent}; missing {shown}"])
+    report = assembly_report_path(spec, root)
+    if not report.is_file():
+        raise ContractError([f"{spec.name} needs {report.name}; build {spec.parent} first"])
 
 
 def _external(

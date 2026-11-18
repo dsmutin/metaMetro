@@ -276,3 +276,27 @@ def test_download_validation_writes_only_under_the_bench_work_dir(tmp_path: Path
     assert not (tmp_path / "data" / "manifests").exists()
     assert not (tmp_path / "data" / "checksums").exists()
     assert not (tmp_path / "docs").exists()
+
+
+def test_derived_community_reads_the_downloading_ancestor_report(tmp_path: Path) -> None:
+    """Half and x10 communities reuse the assembly report of the community that ran datasets."""
+    from metametro.bench.build import _require_parent_fasta, assembly_report_path
+    from metametro.bench.data.universal.catalog import pin_dir
+    from metametro.bench.data.universal.community import load_pairs
+    from metametro.bench.registry import resolve
+
+    expected = tmp_path / "data" / "raw" / "4domain_family_100_assembly_data_report.jsonl"
+    for name in ("4domain_family_100", "4domain_family_100_half", "4domain_family_100_half_x10"):
+        assert assembly_report_path(resolve(name), tmp_path) == expected
+    spec = resolve("4domain_family_100_half")
+    pin = tmp_path / "src" / "metametro" / "bench" / "data" / "pins" / spec.name
+    pin.mkdir(parents=True)
+    (pin / "accessions.tsv").write_bytes((pin_dir(spec.name) / "accessions.tsv").read_bytes())
+    fasta = tmp_path / "data" / "raw" / "fasta"
+    fasta.mkdir(parents=True)
+    for row in load_pairs(pin_dir(spec.name) / "accessions.tsv"):
+        (fasta / f"{row['accession']}.fna").write_text(">x\nACGT\n", encoding="utf-8")
+    with pytest.raises(ContractError, match="build 4domain_family_100 first"):
+        _require_parent_fasta(spec, tmp_path)
+    expected.write_text("{}\n", encoding="utf-8")
+    _require_parent_fasta(spec, tmp_path)

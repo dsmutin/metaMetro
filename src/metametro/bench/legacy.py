@@ -15,7 +15,7 @@ def main_for(name: str, argv: list[str] | None = None) -> int:
     Outputs go to the MetaMetro bench directory. A missing program stops the
     run inside the pipeline. This does not invent reads or a graph.
     """
-    from metametro.bench.build import _require_parent_fasta
+    from metametro.bench.build import _require_parent_fasta, assembly_report_path
     from metametro.bench.data.universal import ncbi_pipeline as pipe
 
     spec = resolve(name)
@@ -33,7 +33,7 @@ def main_for(name: str, argv: list[str] | None = None) -> int:
         graph_id=spec.name,
         score_rank=spec.score_rank,
         total_reads=spec.total_reads,
-        report_path=root / "data" / "raw" / f"{spec.name}_assembly_data_report.jsonl",
+        report_path=assembly_report_path(spec, root),
         zip_name=f"ncbi_{spec.name}.zip",
     )
     if spec.parent:
