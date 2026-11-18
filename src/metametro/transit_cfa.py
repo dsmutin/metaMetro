@@ -3,8 +3,12 @@
 Nodes are stops. A directed edge is one ordered pair of stops that follow
 each other on at least one trip. Sequences come from a single base-4 tape so
 that every edge overlaps by ``k - 1``, the same repeat-junction rule compaction
-checks. Edge coverage is the mean route count of bus, trolley, and tram
-at the two stops. A mode with no route counts as zero.
+checks. Coverage is a simulated passenger flow (``simulated_passenger_normal``):
+each route draws one intensity from a normal distribution with mean equal to
+its number of distinct stops and standard deviation the square root of that
+mean, negative draws set to zero, seeded by ``passenger_seed``. Node coverage
+is the sum over the routes serving the stop; edge coverage is the mean of the
+two endpoint nodes.
 Colours are every transport type and every route, applied with ``replace``.
 """
 
