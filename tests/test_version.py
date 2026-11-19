@@ -37,3 +37,14 @@ def test_readme_mandatory_count_matches_collection(repo_root: Path) -> None:
     collected = sum(1 for line in result.stdout.splitlines() if "::" in line)
     assert collected > 0
     assert int(match.group(1)) == collected
+
+
+def test_readme_python_example_runs(repo_root: Path) -> None:
+    """The python block in README "How it works" runs without errors."""
+    import re
+
+    readme = (repo_root / "README.md").read_text(encoding="utf-8")
+    blocks = re.findall(r"```python\n(.*?)```", readme, flags=re.S)
+    assert blocks, "README must contain a python example"
+    for block in blocks:
+        exec(compile(block, "README.md", "exec"), {})
