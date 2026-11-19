@@ -33,7 +33,7 @@ That tree is gitignored. A build writes:
 
 The CGT carries a feature layer in `node_features.npy`, separate from colours: for each unitig, L2-normalised canonical k-mer counts (`kmer:k4:<kmer>`, 136 columns at the default `k=4`) when every unitig has a sequence, and `coverage`, the mean CFA node coverage of the unitig, when the CFA has a `coverage` column. It adds no colour namespace and does not change `node_colors` or `identity.sha256`. `manifest.yaml` records `features.kmer_k`. `load_bench_cgt(outdir)` rebuilds the same layer; `load_bench_cgt(outdir, features=False)` gives an empty feature matrix.
 
-Every colouring registered in `metametro.bench.colourings` that can run is applied, including a colouring added after the benchmark was introduced. `--colouring` restricts that set. `metametro benchbuild --list-colourings` prints the registry.
+Every colouring registered in `metametro.bench.colourings` that can run is applied, including a colouring added after the benchmark was introduced. `--colouring` restricts that set and runs the named colourings in order. Each one is checked against the graph as coloured so far, and one that cannot run stops the build with an error instead of being skipped. `metametro benchbuild --list-colourings` prints the registry.
 
 | Colouring | Namespace | Auto | When it runs |
 | --- | --- | --- | --- |

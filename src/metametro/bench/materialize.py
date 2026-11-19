@@ -39,6 +39,10 @@ def materialize(graph: CfaGraph, outdir: Path, ctx: BuildContext) -> Materialize
     coloured = graph
     names: list[str] = []
     for colouring in applicable(graph, ctx):
+        if ctx.selected is not None and not colouring.available(coloured, ctx):
+            from metametro.errors import ContractError
+
+            raise ContractError([f"selected colouring cannot run on this graph: {colouring.name}"])
         coloured = colouring.apply(coloured, ctx)
         names.append(colouring.name)
     if not names:

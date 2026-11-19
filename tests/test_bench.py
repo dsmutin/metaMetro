@@ -364,3 +364,19 @@ def test_tool_versions_are_logged_and_absent_tools_are_named(tmp_path: Path, mon
     spec = resolve("bacteria_species_20_heldout")
     _finish_manifest(spec, tmp_path / "bench", status="built", identity="x", colourings=(), requested=spec.name, tools=versions)
     assert read_yaml(tmp_path / "bench" / "manifest.yaml")["tools"] == versions
+
+
+def test_selected_decaying_runs_after_an_earlier_selected_colouring(tmp_path: Path) -> None:
+    """An explicit ``decaying`` sees colours written earlier in the same selection."""
+    result = build(
+        "synthetic_reads_2",
+        outdir=tmp_path / "out",
+        colourings=("composition_kmeans", "decaying"),
+    )
+    assert result.colourings == ("composition_kmeans", "decaying")
+
+
+def test_selected_colouring_that_cannot_run_fails(tmp_path: Path) -> None:
+    """An explicit colouring that cannot run on the graph is an error, not a silent skip."""
+    with pytest.raises(ContractError, match="decaying"):
+        build("synthetic_reads_2", outdir=tmp_path / "out", colourings=("decaying",))

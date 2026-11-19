@@ -119,7 +119,13 @@ def colouring_namespace(name: str) -> str | None:
 
 
 def applicable(graph: CfaGraph, ctx: BuildContext) -> tuple[Colouring, ...]:
-    """Return colourings that can run, honouring an explicit selection."""
+    """Return colourings to run, honouring an explicit selection.
+
+    Without a selection, only automatic colourings available on ``graph`` are
+    returned. With a selection, every selected colouring is returned in order;
+    the caller checks availability on the graph as coloured so far and must
+    fail rather than skip one that cannot run.
+    """
     if ctx.selected is None:
         chosen = {name: item for name, item in _REGISTRY.items() if item.auto}
         missing: list[str] = []
@@ -130,7 +136,9 @@ def applicable(graph: CfaGraph, ctx: BuildContext) -> tuple[Colouring, ...]:
         from metametro.errors import ContractError
 
         raise ContractError([f"unknown colouring: {', '.join(missing)}"])
-    return tuple(item for item in chosen.values() if item.available(graph, ctx))
+    if ctx.selected is None:
+        return tuple(item for item in chosen.values() if item.available(graph, ctx))
+    return tuple(chosen.values())
 
 
 def _as_built(graph: CfaGraph, _ctx: BuildContext) -> CfaGraph:
