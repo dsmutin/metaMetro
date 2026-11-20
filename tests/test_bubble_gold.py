@@ -197,11 +197,18 @@ def test_a_non_genomic_branch_beside_a_genomic_one_is_an_error() -> None:
     assert row["class"] == "unresolved"
 
 
-def _variant_bubble(tmp_path: Path, branches: dict[str, str], locus: str) -> Path:
-    """One genome P+locus+Q; each branch node is P[-21:]+variant+Q[:21] (21-bp overlaps, k = 22)."""
-    import random
+def _variant_bubble(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, branches: dict[str, str], locus: str
+) -> Path:
+    """One genome P+locus+Q; each branch node is P[-21:]+variant+Q[:21] (21-bp overlaps, k = 22).
 
-    from metametro.bench.phage_gold import node_membership, overlapped_ends, write_taxon_membership
+    Membership comes from ``phage_membership`` as in a build, with the pinned
+    genome list and the genome files replaced by ``G``.
+    """
+    import random
+    from types import SimpleNamespace
+
+    from metametro.bench import phage_gold
     from metametro.converters.cfa_to_cdbg import cfa_to_cdbg
     from metametro.formats.cdbg.io import dump_cdbg
     from metametro.formats.cfa.model import CfaGraph
@@ -228,8 +235,10 @@ def _variant_bubble(tmp_path: Path, branches: dict[str, str], locus: str) -> Pat
     )
     dump_cdbg(cfa_to_cdbg(graph), tmp_path / "cdbg")
     write_tsv(tmp_path / "ground_truth" / "taxon_values.tsv", ["taxon", "genome"], [{"taxon": "1", "genome": "G"}])
-    membership = node_membership(sequences, genomes, 21, ends=overlapped_ends(edges), overlap=21)
-    write_taxon_membership(tmp_path, membership)
+    monkeypatch.setattr(phage_gold, "pinned_genomes", lambda bench: [SimpleNamespace(name="G")])
+    monkeypatch.setattr(phage_gold, "load_genomes", lambda folder: genomes)
+    membership = phage_gold.phage_membership(graph, "phage_species_5_x10", tmp_path, 21)
+    phage_gold.write_taxon_membership(tmp_path, membership)
     return tmp_path
 
 
@@ -241,7 +250,9 @@ def _mutate(sequence: str, *positions: int) -> str:
     return "".join(letters)
 
 
-def test_two_error_variants_of_one_locus_are_unresolved_not_intra(tmp_path: Path) -> None:
+def test_two_error_variants_of_one_locus_are_unresolved_not_intra(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import random
 
     from metametro.bench.bubble_gold import write_phage_bubbles
@@ -249,14 +260,16 @@ def test_two_error_variants_of_one_locus_are_unresolved_not_intra(tmp_path: Path
     from metametro.tables import read_tsv
 
     locus = "".join(random.Random(3).choice("ACGT") for _ in range(30))
-    bench = _variant_bubble(tmp_path, {"a": _mutate(locus, 5, 25), "b": _mutate(locus, 8, 22)}, locus)
+    bench = _variant_bubble(tmp_path, monkeypatch, {"a": _mutate(locus, 5, 25), "b": _mutate(locus, 8, 22)}, locus)
     assert read_taxon_membership(bench)["a"] == ("G",) and read_taxon_membership(bench)["b"] == ("G",)
     write_phage_bubbles(bench)
     _, rows = read_tsv(bench / "ground_truth" / "bubbles.tsv")
     assert [(row["class"], row["branch_genomes"], row["expected_action"]) for row in rows] == [("unresolved", ",", "")]
 
 
-def test_the_error_branch_is_listed_last_as_bubbleblower_reads_it(tmp_path: Path) -> None:
+def test_the_error_branch_is_listed_last_as_bubbleblower_reads_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import random
 
     from metametro.bench.bubble_gold import write_phage_bubbles
@@ -264,10 +277,25 @@ def test_the_error_branch_is_listed_last_as_bubbleblower_reads_it(tmp_path: Path
 
     locus = "".join(random.Random(3).choice("ACGT") for _ in range(30))
     # "a" is an error variant; "b" is the genome sequence. Sorted branch order would put "a" first.
-    bench = _variant_bubble(tmp_path, {"a": _mutate(locus, 5, 25), "b": locus}, locus)
+    bench = _variant_bubble(tmp_path, monkeypatch, {"a": _mutate(locus, 5, 25), "b": locus}, locus)
     write_phage_bubbles(bench)
     _, rows = read_tsv(bench / "ground_truth" / "bubbles.tsv")
     [row] = rows
     assert (row["class"], row["type"], row["expected_action"]) == ("error", "error", "pop")
     assert row["branch_ids"] == "b,a"
     assert row["branch_genomes"] == "G,"
+
+
+def test_phage_membership_leaves_out_the_overlaps_of_a_built_graph(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A SNP branch of a 1-bp locus shares only its two overlap k-mers with the genome."""
+    from metametro.bench.bubble_gold import write_phage_bubbles
+    from metametro.bench.phage_gold import read_taxon_membership
+    from metametro.tables import read_tsv
+
+    bench = _variant_bubble(tmp_path, monkeypatch, {"a": "C", "b": "A"}, "A")
+    assert read_taxon_membership(bench)["a"] == () and read_taxon_membership(bench)["b"] == ("G",)
+    write_phage_bubbles(bench)
+    _, rows = read_tsv(bench / "ground_truth" / "bubbles.tsv")
+    assert [(row["class"], row["branch_ids"], row["branch_genomes"]) for row in rows] == [("error", "b,a", "G,")]
