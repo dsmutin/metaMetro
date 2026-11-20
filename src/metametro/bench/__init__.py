@@ -9,7 +9,7 @@ from metametro.bench.ground_truth import (
     load_bench_gold_bubbles,
     load_bench_gold_cgt,
 )
-from metametro.bench.registry import canonical_identity, list_specs, resolve
+from metametro.bench.registry import canonical_gold, canonical_identity, list_specs, resolve
 from metametro.bench.select import (
     bench_gold_namespaces,
     load_bench_cdbg,
@@ -25,6 +25,7 @@ __all__ = [
     "GoldLabels",
     "bench_gold_namespaces",
     "build",
+    "canonical_gold",
     "canonical_identity",
     "list_specs",
     "load_bench_cdbg",

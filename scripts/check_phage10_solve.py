@@ -4,7 +4,9 @@
     python scripts/check_phage10_solve.py solve SUMMARY_JSON
 
 ``identity`` compares ``BENCH_DIR/identity.sha256`` with
-``metametro.bench.canonical_identity("phage_10")``. ``solve`` prints the
+``metametro.bench.canonical_identity("phage_10")`` and ``gold_sha256`` in
+``BENCH_DIR/manifest.yaml`` with ``canonical_gold("phage_10")``, and checks the
+``ground_truth/`` files against ``gold.sha256``. ``solve`` prints the
 phage_10 row of the summary and requires ``build_status == "built"`` and
 ``solved is True``. It does not trust the solve exit code or the summary's
 ``ok`` flag (metaMalevich #275), only the row.
@@ -20,12 +22,23 @@ NAMES = {"phage_10", "phage_species_5_x10"}
 
 
 def check_identity(bench_dir: Path) -> int:
-    from metametro.bench import canonical_identity
+    from metametro.bench import canonical_gold, canonical_identity
+    from metametro.bench.ground_truth import check_gold_digest, gold_digest
+    from metametro.errors import ContractError
+    from metametro.tables import read_yaml
 
     expected = canonical_identity("phage_10")
     found = (bench_dir / "identity.sha256").read_text(encoding="utf-8").split()[0]
     print(f"phage_10 identity {found}, canonical {expected}")
-    return 0 if found == expected else 1
+    gold = read_yaml(bench_dir / "manifest.yaml").get("gold_sha256")
+    print(f"phage_10 gold_sha256 {gold}, canonical {canonical_gold('phage_10')}")
+    try:
+        check_gold_digest(bench_dir)
+    except ContractError as exc:
+        print(exc)
+        return 1
+    ok = found == expected and gold == canonical_gold("phage_10") == gold_digest(bench_dir)
+    return 0 if ok else 1
 
 
 def check_solve(summary_path: Path) -> int:

@@ -167,8 +167,29 @@ def _split(cell: str) -> tuple[str, ...]:
     return tuple(part for part in cell.split(",") if part)
 
 
+def check_gold_digest(outdir: Path) -> None:
+    """Raise ``ContractError`` when ``ground_truth/`` no longer matches ``gold.sha256``.
+
+    A bench built before ``gold.sha256`` existed has no such file and passes.
+    """
+    record = Path(outdir) / "gold.sha256"
+    if not record.is_file():
+        return
+    written = set(record.read_text(encoding="utf-8").splitlines())
+    current = set(gold_digest_lines(outdir))
+    if written != current:
+        changed = sorted({line.split("  ", 1)[1] for line in written ^ current})
+        raise ContractError(
+            [f"{Path(outdir)} ground_truth/ does not match gold.sha256 ({', '.join(changed)}); rebuild the bench"]
+        )
+
+
 def load_bench_gold(outdir: Path, namespace: str = "taxon") -> GoldLabels:
-    """Read the gold labels of ``namespace`` from ``<outdir>/ground_truth/``."""
+    """Read the gold labels of ``namespace`` from ``<outdir>/ground_truth/``.
+
+    Raises ``ContractError`` when the files do not match ``gold.sha256``.
+    """
+    check_gold_digest(outdir)
     root = Path(outdir) / "ground_truth"
     node_path = root / f"{namespace}_nodes.tsv"
     edge_path = root / f"{namespace}_edges.tsv"
@@ -246,7 +267,11 @@ class GoldBubble:
 
 
 def load_bench_gold_bubbles(outdir: Path) -> tuple[GoldBubble, ...]:
-    """Read ``<outdir>/ground_truth/bubbles.tsv``. Raise ``ContractError`` when it is missing."""
+    """Read ``<outdir>/ground_truth/bubbles.tsv``.
+
+    Raise ``ContractError`` when it is missing or ``ground_truth/`` does not match ``gold.sha256``.
+    """
+    check_gold_digest(outdir)
     path = Path(outdir) / "ground_truth" / "bubbles.tsv"
     if not path.is_file():
         raise ContractError([f"no gold bubbles under {path.parent}"])

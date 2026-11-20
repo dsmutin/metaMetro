@@ -16,7 +16,8 @@ class BenchSpec:
     columns, or labels in these namespaces are moved to ``ground_truth/`` and
     are never readable as colours. ``canonical_identity`` is the
     ``identity.sha256`` of a default build (``colourings=None``, no classifier
-    paths) when it is reproducible from pinned inputs, else ``""``.
+    paths) when it is reproducible from pinned inputs, else ``""``;
+    ``canonical_gold`` is that build's ``gold_sha256``.
     """
 
     name: str
@@ -34,6 +35,7 @@ class BenchSpec:
     parent: str = ""
     gold_namespaces: tuple[str, ...] = ("taxon",)
     canonical_identity: str = ""
+    canonical_gold: str = ""
 
     def path_parts(self) -> tuple[str, str, str]:
         """Return ``(name, assembler, properties)`` for the default output tree."""

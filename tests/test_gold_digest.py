@@ -39,3 +39,19 @@ def test_gold_digest_changes_with_a_gold_file_and_identity_does_not(tmp_path: Pa
     (tmp_path / "a" / "ground_truth" / "taxon_nodes.tsv").write_text("node_id\ttaxon\n", encoding="utf-8")
     assert gold_digest(tmp_path / "a") != gold_a
     assert (tmp_path / "a" / "identity.sha256").read_text().split()[0] == first
+
+
+def test_loading_gold_checks_gold_sha256(tmp_path: Path) -> None:
+    from metametro.bench import load_bench_gold, load_bench_gold_bubbles
+    from metametro.errors import ContractError
+
+    _build(tmp_path, "value\nA\n")
+    assert load_bench_gold(tmp_path).nodes
+    assert load_bench_gold_bubbles(tmp_path)
+    (tmp_path / "ground_truth" / "extra.tsv").write_text("value\nB\n", encoding="utf-8")
+    with pytest.raises(ContractError, match="extra.tsv.*rebuild the bench"):
+        load_bench_gold(tmp_path)
+    with pytest.raises(ContractError, match="does not match gold.sha256"):
+        load_bench_gold_bubbles(tmp_path)
+    (tmp_path / "gold.sha256").unlink()
+    assert load_bench_gold(tmp_path).nodes

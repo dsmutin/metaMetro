@@ -69,24 +69,24 @@ A column or colour namespace that carries an evaluation target (`truth_taxon_id`
 
 ### Gold digest
 
-Every build writes `gold.sha256` beside `identity.sha256`: one `sha256sum` line (`<sha256>  ground_truth/<file>`) for every file under `ground_truth/`, sorted by path, so `sha256sum -c gold.sha256` checks them. `manifest.yaml` records the SHA-256 of that text as `gold_sha256`, and `metametro.bench.ground_truth.gold_digest(bench_dir)` recomputes it. Both are written after `ground_truth/` and before `identity.sha256` and `manifest.yaml`. They are separate from `identity.sha256`: a change to `taxon_membership.tsv`, `taxon_values.tsv`, or `bubbles.tsv` changes `gold_sha256` and leaves the identity as it is.
+Every build writes `gold.sha256` beside `identity.sha256`: one `sha256sum` line (`<sha256>  ground_truth/<file>`) for every file under `ground_truth/`, sorted by path, so `sha256sum -c gold.sha256` checks them. `manifest.yaml` records the SHA-256 of that text as `gold_sha256`, and `metametro.bench.ground_truth.gold_digest(bench_dir)` recomputes it, and `load_bench_gold`, `load_bench_gold_all`, `load_bench_gold_cgt`, and `load_bench_gold_bubbles` raise `ContractError` when `ground_truth/` no longer matches `gold.sha256` (a bench built without `gold.sha256` is read as before). Both are written after `ground_truth/` and before `identity.sha256` and `manifest.yaml`. They are separate from `identity.sha256`: a change to `taxon_membership.tsv`, `taxon_values.tsv`, or `bubbles.tsv` changes `gold_sha256` and leaves the identity as it is.
 
 ### Canonical identities
 
-`metametro.bench.canonical_identity(name)` returns the `identity.sha256` that a default build (`build(name)`, `colourings=None`, no classifier paths) must produce, or `None` when the identity depends on inputs that are not pinned (`roxel`, `spb_ground_transit`, `phage_species_5`, and the NCBI communities). A legacy alias such as `phage_10` gives the value of its benchmark. The values are stored as `BenchSpec.canonical_identity`; a required test checks that they match this table and rebuilds every in-process benchmark against them.
+`metametro.bench.canonical_identity(name)` returns the `identity.sha256` that a default build (`build(name)`, `colourings=None`, no classifier paths) must produce, or `None` when the identity depends on inputs that are not pinned (`roxel`, `spb_ground_transit`, `phage_species_5`, and the NCBI communities). A legacy alias such as `phage_10` gives the value of its benchmark. `canonical_gold(name)` returns the expected `gold_sha256` of the same build (the digest of `gold.sha256`, over every file under `ground_truth/`). The values are stored as `BenchSpec.canonical_identity` and `BenchSpec.canonical_gold`; a required test checks that they match this table and rebuilds every in-process benchmark against both. `phage_species_5_x10` needs MEGAHIT and Samovar, so it is rebuilt and checked against both values by the CI job `phage10-solve`, not by a required test.
 
-| Bench | Canonical identity |
-| --- | --- |
-| `bubble_error_1` | `c4232c8cc17dc3c48b52a6f0b006eb841b83e9c2fbe09d31812a87cbee50af3a` |
-| `bubble_nested_2` | `3a8a773fa3ed27252bfb2f50d66736b9e19ee532d95832af523b415f2e8ae2d7` |
-| `bubble_reads_2` | `949fa8a0578a4396d9df20af4c449b4d3c44ed4a7d9e41859d2bc1e3e15b2a41` |
-| `bubble_shared_2` | `254486559f42d4c7a4c5e16b7e3ef1eaf9c99e816450be9ae959862fc6e62969` |
-| `bubble_strain_2` | `a6a805ca1435f8afbf4646107d21b1ecc7f6a433a75bda22e785ade851ef456c` |
-| `bubble_strain_3_n50` | `d9a1db5c2ad772545b39c120cb5906623d2bf5e532d1df1885ae03c3e58c835f` |
-| `mock_bubble` | `cd7a2e150dbb344035066030794be8ef5bef66fbf8e20942d8eccdeaeeced095` |
-| `mock_chain` | `a397fd80a0c2779bc4362da5f79d17ace86527e4bb0b3aa7260c2600ee905377` |
-| `phage_species_5_x10` | `78121c1b05a5814bfc17ac3b7650ed5223a0f584cfada24e9224b7ba0364564c` |
-| `synthetic_reads_2` | `89c2cfbd147852473e31f1e6c46b92e2f41ac15b2d940dc05a47d85c8d245448` |
+| Bench | Canonical identity | Canonical gold (`gold_sha256`) |
+| --- | --- | --- |
+| `bubble_error_1` | `c4232c8cc17dc3c48b52a6f0b006eb841b83e9c2fbe09d31812a87cbee50af3a` | `bbf0a479aa9bcb003de9d7a0b3226c8801035d1d56766acd67ddbcf4be03e4d5` |
+| `bubble_nested_2` | `3a8a773fa3ed27252bfb2f50d66736b9e19ee532d95832af523b415f2e8ae2d7` | `a8b689d34e3049b695f2e6cfc6a8421a44e1707041dd89cbc177c9fe064dce81` |
+| `bubble_reads_2` | `949fa8a0578a4396d9df20af4c449b4d3c44ed4a7d9e41859d2bc1e3e15b2a41` | `7cb08e179afae3c16653ae4d0b9a621dbd8280fe3f24046be22c9fc9837cf823` |
+| `bubble_shared_2` | `254486559f42d4c7a4c5e16b7e3ef1eaf9c99e816450be9ae959862fc6e62969` | `4c4e599efa9b2b1a1987c259ff72d4dfa5a860e5752ce7a276a411fc4083ce28` |
+| `bubble_strain_2` | `a6a805ca1435f8afbf4646107d21b1ecc7f6a433a75bda22e785ade851ef456c` | `dae6f67ef1b912cde17eeef945e8e6708034277698fc2791e480701ea632319e` |
+| `bubble_strain_3_n50` | `d9a1db5c2ad772545b39c120cb5906623d2bf5e532d1df1885ae03c3e58c835f` | `a4385d9c9141c9c2f6ef7acec71a4872d3032a1f2e038473874815c1c792d4bb` |
+| `mock_bubble` | `cd7a2e150dbb344035066030794be8ef5bef66fbf8e20942d8eccdeaeeced095` | `bbe5f7acb070efa714d4890e92c7fb1aa51316c45142f12dd07f5f84490ab849` |
+| `mock_chain` | `a397fd80a0c2779bc4362da5f79d17ace86527e4bb0b3aa7260c2600ee905377` | `3bb81d4e5600db9238aeb4594301102f48da6eb903dd5bbbb65644754b61d89f` |
+| `phage_species_5_x10` | `78121c1b05a5814bfc17ac3b7650ed5223a0f584cfada24e9224b7ba0364564c` | `3ec73bf444dabd55b03ec4ee23b405ccb20d281de406dbe8c0d3db51c63c4cb9` |
+| `synthetic_reads_2` | `89c2cfbd147852473e31f1e6c46b92e2f41ac15b2d940dc05a47d85c8d245448` | `078cf246083cc5ca56930dcdb2f718599217f0c10f7a6986b2433581d0be5e66` |
 
 ### Gold namespaces
 
