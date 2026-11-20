@@ -142,3 +142,13 @@ def test_package_data_ships_every_pin_and_schema() -> None:
     }
     assert data and data <= shipped
     assert package / "bench/data/pins/phage_species_5_x10/kraken2/taxdump/nodes.dmp" in shipped
+
+
+def test_tampered_pinned_output_is_rejected(tmp_path: Path) -> None:
+    pins = _pin(tmp_path)
+    output = pins / "phage_species_5_x10" / "kraken2" / "nodes.kraken"
+    output.write_text(output.read_text().replace("10665", "10666"), encoding="utf-8")
+    with pytest.raises(ContractError, match="does not have the SHA-256 pinned"):
+        kraken_pin("phage_10", pins=pins)
+    with pytest.raises(ContractError, match="does not have the SHA-256 pinned"):
+        checked_kraken_pin("phage_10", _graph(), tmp_path / "nodes.fna", pins=pins)

@@ -455,7 +455,8 @@ def _external(
 
         graph = paint_phage_gold(load_cfa(coloured), spec.name, genomes, spec.k)
         found: dict[str, Path] = {}
-        if classifiers.kraken_db is None and classifiers.kraken_output is None:
+        wants_kraken = colourings is None or "kraken2" in colourings
+        if wants_kraken and classifiers.kraken_db is None and classifiers.kraken_output is None:
             from metametro.bench.kraken_pin import checked_kraken_pin
 
             pinned = checked_kraken_pin(spec.name, graph, destination / "work" / "classifier" / "nodes.fna")
