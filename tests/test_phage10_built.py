@@ -1,4 +1,4 @@
-"""Mandatory when a built phage_10 is available: its gold class counts. Skipped otherwise.
+"""Mandatory when a built phage_10 is available: its gold class counts. Skipped when there is none.
 
 The CI job ``phage10-solve`` builds phage_10 and runs this file with
 ``METAMETRO_PHAGE10_DIR`` set; locally it reads the default benchbuild folder.
@@ -14,17 +14,32 @@ import pytest
 
 from metametro.bench.paths import default_outdir
 from metametro.bench.registry import resolve
-from metametro.tables import read_tsv
+from metametro.tables import read_tsv, read_yaml
 
 pytestmark = pytest.mark.mandatory
 
 
 def _bench() -> Path:
+    """The built phage_10 folder; skip only when no build was given or found.
+
+    A folder named by ``METAMETRO_PHAGE10_DIR``, or a default folder holding a
+    built bench (``status: built`` in ``manifest.yaml``), fails the test when
+    ``bubbles.tsv`` is missing.
+    """
     given = os.environ.get("METAMETRO_PHAGE10_DIR")
     folder = Path(given) if given else default_outdir(resolve("phage_10"))
-    if not (folder / "ground_truth" / "bubbles.tsv").is_file():
+    manifest = folder / "manifest.yaml"
+    if not given and (not manifest.is_file() or (read_yaml(manifest) or {}).get("status") != "built"):
         pytest.skip(f"no built phage_10 at {folder}; the phage10-solve CI job builds one")
+    if not (folder / "ground_truth" / "bubbles.tsv").is_file():
+        pytest.fail(f"{folder} has no ground_truth/bubbles.tsv; rebuild phage_10")
     return folder
+
+
+def test_a_given_phage_10_without_bubbles_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("METAMETRO_PHAGE10_DIR", str(tmp_path))
+    with pytest.raises(pytest.fail.Exception, match="no ground_truth/bubbles.tsv"):
+        _bench()
 
 
 def test_phage_10_gold_class_counts() -> None:
