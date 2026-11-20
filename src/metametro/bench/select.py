@@ -50,12 +50,23 @@ def namespaces_for(colourings: Sequence[str]) -> list[str]:
 def bench_gold_namespaces(outdir: Path) -> frozenset[str]:
     """Gold namespaces declared in ``manifest.yaml``, plus ``GOLD_NAMESPACES``.
 
-    A directory without a manifest, or a manifest written before benches
-    declared their gold, gives ``GOLD_NAMESPACES``.
+    A directory without a manifest gives ``GOLD_NAMESPACES``. A manifest written
+    before benches declared their gold (no ``gold_namespaces``) raises
+    ``ContractError``: its graphs may still carry gold such as ``genome``,
+    ``route`` or ``type`` as colours, so the bench must be rebuilt.
     """
     path = Path(outdir) / "manifest.yaml"
-    declared = read_yaml(path).get("gold_namespaces") if path.is_file() else None
-    return GOLD_NAMESPACES | frozenset(str(name) for name in declared or [])
+    if not path.is_file():
+        return GOLD_NAMESPACES
+    manifest = read_yaml(path) or {}
+    if "gold_namespaces" not in manifest:
+        raise ContractError(
+            [
+                f"{path} has no gold_namespaces: the bench was built before MetaMetro 0.23.0 and its graphs "
+                "may carry gold labels as colours; rebuild the bench"
+            ]
+        )
+    return GOLD_NAMESPACES | frozenset(str(name) for name in manifest["gold_namespaces"] or [])
 
 
 def _reject_gold(outdir: Path, namespaces: Sequence[str] | None) -> frozenset[str]:

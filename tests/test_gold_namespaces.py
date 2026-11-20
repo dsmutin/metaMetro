@@ -137,3 +137,19 @@ def test_guard_rejects_a_declared_gold_column_or_label() -> None:
     with pytest.raises(ContractError, match="colour namespace route"):
         assert_no_target_leak(graph, gold_namespaces=("transport_type", "route"))
     assert_no_target_leak(graph)
+
+
+def test_a_bench_built_before_gold_namespaces_must_be_rebuilt(tmp_path: Path) -> None:
+    from metametro.bench import bench_gold_namespaces, build, load_bench_cdbg, load_bench_gold_all
+    from metametro.errors import ContractError
+    from metametro.tables import read_yaml, write_yaml
+
+    build("mock_bubble", outdir=tmp_path / "mock")
+    manifest = read_yaml(tmp_path / "mock" / "manifest.yaml")
+    assert "genome" in bench_gold_namespaces(tmp_path / "mock")
+    del manifest["gold_namespaces"]
+    write_yaml(tmp_path / "mock" / "manifest.yaml", manifest)
+    for load in (bench_gold_namespaces, load_bench_cdbg, load_bench_gold_all):
+        with pytest.raises(ContractError, match="rebuild the bench"):
+            load(tmp_path / "mock")
+    assert bench_gold_namespaces(tmp_path / "no_manifest") == frozenset({"taxon"})

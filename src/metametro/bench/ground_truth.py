@@ -212,7 +212,7 @@ def load_bench_gold_all(outdir: Path) -> dict[str, GoldLabels]:
     """Every gold namespace of a bench that has labels under ``ground_truth/``.
 
     The namespaces are those declared in ``manifest.yaml`` (``gold_namespaces``),
-    or ``taxon`` for an older manifest. A declared namespace without files is
+    plus ``taxon``; a manifest without them raises ``ContractError``. A declared namespace without files is
     left out, so a bench with no gold gives an empty mapping.
     """
     from metametro.bench.select import bench_gold_namespaces
