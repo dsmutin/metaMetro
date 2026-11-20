@@ -23,7 +23,7 @@ edge_ids = cgt_edge_cfa_ids(cdbg)           # CSR slot → CFA edge id
 sequence = resolve_sequence(cgt, cdbg, dense_id)  # unitig DNA, not a CGT column
 external = cgt_from_csr(...)  # external CSR; colours stay off X
 csc = csc_from_cgt(cgt)          # incoming index; does not reorder X_edge
-graph = cgt_to_pyg(cgt)          # requires torch_geometric
+graph = to_pyg(cgt)              # metametro.to_pyg; requires torch_geometric
 result = run_ds(cgt, seed=0)     # does not modify cgt
 predictions = predictions_from_ds(result)  # node predictions; confidence is the softmax probability
 edited = apply_edit_proposal(proposal, cdbg)  # new CDBG; cdbg is not modified
