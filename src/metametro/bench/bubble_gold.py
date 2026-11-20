@@ -10,10 +10,11 @@ smaller ``bubble_id`` is kept. ``bubble_id`` is BubbleBlower's sequence
 signature (the first 16 hex digits of SHA-256 over the source, sink, and branch
 sequence hashes), computed on the oriented sequences.
 
-A branch is labelled with the gold species shared by all its CFA nodes, or is
-unlabelled. ``class`` is ``inter_species`` when the labelled branches map to
-different species, ``intra_species`` when they map to one, and ``unresolved``
-when any branch is unlabelled. ``type`` is ``strain`` and ``expected_action``
+A branch comes from the species shared by all its CFA nodes in
+``ground_truth/taxon_membership.tsv`` (the single gold labels on a bench
+without that file). ``class`` is ``unresolved`` when a branch has no species,
+``intra_species`` when every branch has the same species set, and
+``inter_species`` when the sets differ. ``type`` is ``strain`` and ``expected_action``
 ``retain`` for ``inter_species``; otherwise ``type`` is the class and
 ``expected_action`` is empty (the hand-built benches use ``strain``/``error``
 and ``retain``/``pop``). Nested or overlapping bubbles and branches longer than
@@ -139,20 +140,30 @@ def strand_bubbles(cdbg: Cdbg, *, max_internal: int = 32) -> list[StrandBubble]:
 def bubble_rows(
     cdbg: Cdbg, node_species: dict[str, tuple[str, ...]], genome_of: dict[str, str]
 ) -> list[dict[str, str]]:
-    """Gold rows for every bubble of ``cdbg``. ``node_species`` is keyed by CFA node id."""
+    """Gold rows for every bubble of ``cdbg``.
+
+    ``node_species`` maps a CFA node id to the species it comes from (one or
+    more). A branch comes from the species shared by all its nodes; ``class`` is
+    ``unresolved`` when a branch has none, ``intra_species`` when every branch has
+    the same set, else ``inter_species``. Several species of one branch are
+    joined by ``;`` in ``branch_species`` and ``branch_genomes``.
+    """
     members = {unitig.unitig_id: list(unitig.members) for unitig in cdbg.unitigs}
     rows: list[dict[str, str]] = []
     for bubble in strand_bubbles(cdbg):
         tokens: list[str] = []
         labels: list[str] = []
+        species_sets: list[frozenset[str]] = []
         for path in bubble.branches:
             nodes = [member for node in path for member in members[node[0]]]
             tokens.append(";".join(nodes))
-            found = {node_species.get(node, ()) for node in nodes}
-            labels.append(next(iter(found))[0] if len(found) == 1 and len(next(iter(found))) == 1 else "")
-        if any(label == "" for label in labels):
+            sets = [frozenset(node_species.get(node, ())) for node in nodes]
+            shared = frozenset.intersection(*sets) if sets else frozenset()
+            species_sets.append(shared)
+            labels.append(";".join(sorted(shared, key=int)))
+        if any(not shared for shared in species_sets):
             kind = "unresolved"
-        elif len(set(labels)) == 1:
+        elif len(set(species_sets)) == 1:
             kind = "intra_species"
         else:
             kind = "inter_species"
@@ -160,13 +171,16 @@ def bubble_rows(
             {
                 "bubble_id": bubble.bubble_id,
                 "type": "strain" if kind == "inter_species" else kind,
-                "strain_ids": ",".join(sorted({label for label in labels if label}, key=int)),
+                "strain_ids": ",".join(sorted(set().union(*species_sets), key=int)),
                 "source_id": ";".join(members[bubble.source[0]]),
                 "sink_id": ";".join(members[bubble.sink[0]]),
                 "branch_ids": ",".join(tokens),
                 "expected_action": "retain" if kind == "inter_species" else "",
                 "class": kind,
-                "branch_genomes": ",".join(genome_of.get(label, "") for label in labels),
+                "branch_genomes": ",".join(
+                    ";".join(genome_of.get(species, "") for species in sorted(shared, key=int))
+                    for shared in species_sets
+                ),
                 "branch_species": ",".join(labels),
             }
         )
@@ -178,11 +192,18 @@ def write_phage_bubbles(outdir: Path) -> Path:
     from metametro.bench.ground_truth import load_bench_gold
     from metametro.formats.cdbg.io import load_cdbg
 
+    from metametro.bench.phage_gold import read_taxon_membership
+
     outdir = Path(outdir)
-    gold = load_bench_gold(outdir)
     _, values = read_tsv(outdir / "ground_truth" / "taxon_values.tsv")
     genome_of = {row["taxon"]: row["genome"] for row in values}
-    rows = bubble_rows(load_cdbg(outdir / "cdbg"), gold.nodes, genome_of)
+    membership = read_taxon_membership(outdir)
+    if membership is None:
+        node_species = load_bench_gold(outdir).nodes
+    else:
+        species_of = {row["genome"]: row["taxon"] for row in values}
+        node_species = {node: tuple(species_of[genome] for genome in genomes) for node, genomes in membership.items()}
+    rows = bubble_rows(load_cdbg(outdir / "cdbg"), node_species, genome_of)
     path = outdir / "ground_truth" / "bubbles.tsv"
     write_tsv(path, list(BUBBLE_COLUMNS), rows)
     return path

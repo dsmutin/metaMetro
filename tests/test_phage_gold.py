@@ -85,3 +85,34 @@ def test_phage_gold_is_species_taxid_in_ground_truth_only(tmp_path: Path) -> Non
     assert by_taxon["1921008"]["genome"] == "T1"
     assert by_taxon["1921008"]["record_taxid"] == "2492962"
     assert len(rows) == 5
+
+
+def test_membership_is_deterministic_and_a_shared_node_gets_both_genomes() -> None:
+    from metametro.bench.phage_gold import node_genomes, node_membership
+
+    genomes = {"T7": "AAAACCCCGGGG", "T3": "CCCCGGGGTATA", "T4": "ACGTTGCA"}
+    sequences = {"shared": "CCCCGGGG", "t7": "AAAACC", "short": "AC", "none": "GAGAGA"}
+    first = node_membership(sequences, genomes, 4)
+    again = node_membership(dict(reversed(sequences.items())), dict(reversed(genomes.items())), 4)
+    assert first == again
+    assert first.genomes == ("T3", "T4", "T7")
+    assert first.members("shared") == ("T3", "T7")
+    assert first.counts["shared"] == (5, 0, 5) and first.positions["shared"] == 5
+    assert first.owner("shared") == ""
+    assert first.members("t7") == ("T7",) and first.owner("t7") == "T7"
+    assert first.members("short") == () and first.positions["short"] == 0
+    assert first.members("none") == ()
+    assert node_genomes(sequences, genomes, 4) == {"shared": "", "t7": "T7", "short": "", "none": ""}
+
+
+def test_membership_file_round_trip(tmp_path) -> None:
+    from metametro.bench.phage_gold import node_membership, read_taxon_membership, write_taxon_membership
+
+    membership = node_membership({"n1": "CCCCGGGG", "n2": "AAAACC"}, {"T7": "AAAACCCCGGGG", "T3": "CCCCGGGGTATA"}, 4)
+    path = write_taxon_membership(tmp_path, membership)
+    assert path.read_text().splitlines() == [
+        "node_id\tkmers\tT3\tT3_fraction\tT7\tT7_fraction",
+        "n1\t5\t1\t1.000000\t1\t1.000000",
+        "n2\t3\t0\t0.000000\t1\t1.000000",
+    ]
+    assert read_taxon_membership(tmp_path) == {"n1": ("T3", "T7"), "n2": ("T7",)}

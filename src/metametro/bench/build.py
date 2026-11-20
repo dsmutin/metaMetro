@@ -183,9 +183,10 @@ def _finish_manifest(
         manifest["tools"] = dict(tools)
     previous = destination / "manifest.yaml"
     if status == "built" and previous.is_file():
-        features = read_yaml(previous).get("features")
-        if features is not None:
-            manifest["features"] = features
+        written = read_yaml(previous)
+        for key in ("features", "gold_sha256"):
+            if written.get(key) is not None:
+                manifest[key] = written[key]
     write_yaml(destination / "manifest.yaml", manifest)
 
 
@@ -451,9 +452,16 @@ def _external(
         coloured = destination / "work" / "coloured_cfa"
         if not coloured.is_dir():
             raise ContractError(["phage baseline did not write coloured_cfa"])
-        from metametro.bench.phage_gold import paint_phage_gold, write_taxon_values
+        from metametro.bench.phage_gold import (
+            paint_phage_gold,
+            phage_membership,
+            write_taxon_membership,
+            write_taxon_values,
+        )
 
-        graph = paint_phage_gold(load_cfa(coloured), spec.name, genomes, spec.k)
+        graph = load_cfa(coloured)
+        membership = phage_membership(graph, spec.name, genomes, spec.k)
+        graph = paint_phage_gold(graph, spec.name, genomes, spec.k, membership=membership)
         found: dict[str, Path] = {}
         wants_kraken = colourings is None or "kraken2" in colourings
         if wants_kraken and classifiers.kraken_db is None and classifiers.kraken_output is None:
@@ -467,6 +475,7 @@ def _external(
 
         def write_phage_ground_truth(outdir: Path) -> None:
             write_taxon_values(outdir, spec.name)
+            write_taxon_membership(outdir, membership)
             write_phage_bubbles(outdir)
 
         made = materialize(

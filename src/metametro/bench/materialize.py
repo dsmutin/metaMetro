@@ -14,7 +14,7 @@ from pathlib import Path
 
 from metametro.bench.colourings import BuildContext, applicable
 from metametro.bench.features import node_feature_layer
-from metametro.bench.ground_truth import gold_identity_lines, split_gold, write_gold
+from metametro.bench.ground_truth import gold_identity_lines, split_gold, write_gold, write_gold_digest
 from metametro.bench.identity import graph_identity, write_identity
 from metametro.bench.leakage import assert_cgt_no_target_leak, assert_no_target_leak
 from metametro.contracts.colouring import GOLD_NAMESPACES
@@ -54,7 +54,9 @@ def materialize(
     ``manifest.yaml`` so loaders refuse those namespaces as colours.
     ``before_identity(outdir)`` runs after the graphs and gold are written and
     before ``identity.sha256`` and ``manifest.yaml``, so a step that fails there
-    leaves no folder that looks built.
+    leaves no folder that looks built. ``gold.sha256`` (every file under
+    ``ground_truth/``) is written next, and its digest goes to ``manifest.yaml``
+    as ``gold_sha256``; neither is part of ``identity.sha256``.
     """
     declared = tuple(dict.fromkeys(str(name) for name in gold_namespaces))
     graph, gold = split_gold(graph, declared)
@@ -91,6 +93,7 @@ def materialize(
     dump_cgt(cgt, outdir / "cgt")
     if before_identity is not None:
         before_identity(outdir)
+    gold_sha256 = write_gold_digest(outdir)
     applied = tuple(names)
     digest = graph_identity(coloured, colourings=applied, ground_truth=gold_identity_lines(gold))
     write_identity(outdir / "identity.sha256", digest)
@@ -106,6 +109,7 @@ def materialize(
             "n_unitigs": len(cdbg.unitigs),
             "features": {"kmer_k": ctx.composition_k, "node": len(node_names)},
             "gold_namespaces": list(declared),
+            "gold_sha256": gold_sha256,
         },
     )
     return Materialized(

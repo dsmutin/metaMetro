@@ -110,3 +110,16 @@ def test_a_direct_link_is_an_empty_unresolved_branch() -> None:
     assert row["branch_ids"] == "nA,"
     assert row["class"] == "unresolved" and row["type"] == "unresolved" and row["expected_action"] == ""
     assert row["branch_species"] == "10665,"
+
+
+def test_bubble_class_comes_from_the_branch_membership() -> None:
+    cdbg = _toy([("S", "A"), ("S", "B"), ("A", "T"), ("B", "T")])
+    genome_of = {"10665": "T4", "10760": "T7", "10726": "T5"}
+    [shared] = bubble_rows(cdbg, {"nA": ("10665", "10760"), "nB": ("10665", "10760")}, genome_of)
+    assert shared["class"] == "intra_species" and shared["branch_species"] == "10665;10760,10665;10760"
+    assert shared["branch_genomes"] == "T4;T7,T4;T7"
+    [differs] = bubble_rows(cdbg, {"nA": ("10665", "10760"), "nB": ("10665",)}, genome_of)
+    assert differs["class"] == "inter_species" and differs["expected_action"] == "retain"
+    assert differs["strain_ids"] == "10665,10760"
+    [missing] = bubble_rows(cdbg, {"nA": ("10665", "10760")}, genome_of)
+    assert missing["class"] == "unresolved" and missing["branch_species"] == "10665;10760,"

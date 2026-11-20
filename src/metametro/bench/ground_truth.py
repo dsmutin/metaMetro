@@ -269,3 +269,32 @@ def load_bench_gold_bubbles(outdir: Path) -> tuple[GoldBubble, ...]:
             )
         )
     return tuple(found)
+
+
+def gold_digest_lines(outdir: Path) -> list[str]:
+    """``sha256sum`` lines for every file under ``outdir/ground_truth/``, sorted by path."""
+    import hashlib
+
+    outdir = Path(outdir)
+    root = outdir / "ground_truth"
+    files = sorted(path for path in root.rglob("*") if path.is_file()) if root.is_dir() else []
+    return [f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(outdir).as_posix()}" for path in files]
+
+
+def gold_digest(outdir: Path) -> str:
+    """SHA-256 of the ``gold.sha256`` text for the current ``ground_truth/`` files."""
+    import hashlib
+
+    text = "".join(f"{line}\n" for line in gold_digest_lines(outdir))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def write_gold_digest(outdir: Path) -> str:
+    """Write ``gold.sha256`` (one ``sha256sum`` line per ground_truth file) and return ``gold_digest``.
+
+    The gold digest is separate from ``identity.sha256``: changing a gold file
+    changes it and leaves the identity as it is.
+    """
+    outdir = Path(outdir)
+    (outdir / "gold.sha256").write_text("".join(f"{line}\n" for line in gold_digest_lines(outdir)), encoding="utf-8")
+    return gold_digest(outdir)

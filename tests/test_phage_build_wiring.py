@@ -8,8 +8,11 @@ from pathlib import Path
 import pytest
 
 from metametro.bench.build import build
+from metametro.bench.phage_gold import Membership
+from metametro.bench.ground_truth import gold_digest
 from metametro.formats.cfa.io import dump_cfa
 from metametro.formats.cfa.model import CfaGraph
+from metametro.tables import read_yaml
 
 pytestmark = pytest.mark.mandatory
 
@@ -47,7 +50,13 @@ def phage_build(monkeypatch: pytest.MonkeyPatch) -> dict[str, list]:
     monkeypatch.setattr("metametro.bench.genomes.check_genomes", lambda *_args: None)
     monkeypatch.setattr(build_module, "require_programs", lambda *_args: None)
     monkeypatch.setattr(build_module.subprocess, "run", run)
-    monkeypatch.setattr("metametro.bench.phage_gold.paint_phage_gold", lambda graph, *_args: graph)
+    monkeypatch.setattr("metametro.bench.phage_gold.paint_phage_gold", lambda graph, *_args, **_kwargs: graph)
+    monkeypatch.setattr(
+        "metametro.bench.phage_gold.phage_membership",
+        lambda graph, *_args: Membership(
+            genomes=("T4",), positions={"n1": 6, "n2": 6}, counts={"n1": (6,), "n2": (0,)}
+        ),
+    )
     monkeypatch.setattr("metametro.bench.kraken_pin.checked_kraken_pin", pin)
     return calls
 
@@ -91,12 +100,13 @@ def test_phage_build_writes_taxon_values_and_bubbles_before_identity_and_manifes
     tmp_path: Path, phage_build: dict[str, list], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     outdir = tmp_path / "phage_10"
-    seen: list[tuple[bool, bool, bool]] = []
+    seen: list[tuple[bool, bool, bool, bool]] = []
 
     def bubbles(path: Path) -> Path:
         seen.append(
             (
                 (path / "ground_truth" / "taxon_values.tsv").is_file(),
+                (path / "ground_truth" / "taxon_membership.tsv").is_file(),
                 (path / "identity.sha256").exists(),
                 (path / "manifest.yaml").exists(),
             )
@@ -105,8 +115,16 @@ def test_phage_build_writes_taxon_values_and_bubbles_before_identity_and_manifes
 
     monkeypatch.setattr("metametro.bench.bubble_gold.write_phage_bubbles", bubbles)
     result = build("phage_10", outdir=outdir, execute=True, colourings=("as_built",))
-    assert seen == [(True, False, False)]
+    assert seen == [(True, True, False, False)]
     assert result.status == "built" and (outdir / "identity.sha256").is_file()
+    assert (outdir / "ground_truth" / "taxon_membership.tsv").read_text().splitlines() == [
+        "node_id\tkmers\tT4\tT4_fraction",
+        "n1\t6\t1\t1.000000",
+        "n2\t6\t0\t0.000000",
+    ]
+    manifest = read_yaml(outdir / "manifest.yaml")
+    assert manifest["gold_sha256"] == gold_digest(outdir)
+    assert "ground_truth/taxon_membership.tsv" in (outdir / "gold.sha256").read_text()
 
 
 def test_failed_phage_ground_truth_leaves_no_identity_or_manifest(
@@ -123,3 +141,4 @@ def test_failed_phage_ground_truth_leaves_no_identity_or_manifest(
     assert (outdir / "cdbg").is_dir()
     assert not (outdir / "identity.sha256").exists()
     assert not (outdir / "manifest.yaml").exists()
+    assert not (outdir / "gold.sha256").exists()
