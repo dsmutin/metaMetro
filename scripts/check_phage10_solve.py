@@ -13,9 +13,11 @@ phage_10 row of the summary and requires ``build_status == "built"``,
 identity of the build that solve made: ``identity_as_built`` must equal the
 canonical identity when the row has it; otherwise ``SOLVE_WORKDIR/<bench>/
 identity.sha256`` must equal ``SOLVE_IDENTITIES`` for the applied colourings
-(the canonical identity for any other set), and its ``gold_sha256`` must equal
-``canonical_gold``. It does not trust the solve exit code or the summary's
-``ok`` flag (metaMalevich #275), only the row.
+(the canonical identity for any other set). With ``SOLVE_WORKDIR``, the solved
+build's ``gold_sha256`` must equal ``canonical_gold`` and its ``ground_truth/``
+must pass ``check_gold_digest``, with or without ``identity_as_built``. It
+does not trust the solve exit code or the summary's ``ok`` flag (metaMalevich
+#275), only the row.
 """
 
 from __future__ import annotations
@@ -57,6 +59,8 @@ SOLVE_IDENTITIES = {
 
 def _solve_problems(row: dict, workdir: Path | None) -> list[str]:
     from metametro.bench import canonical_gold, canonical_identity
+    from metametro.bench.ground_truth import check_gold_digest
+    from metametro.errors import ContractError
     from metametro.tables import read_yaml
 
     problems = []
@@ -76,19 +80,25 @@ def _solve_problems(row: dict, workdir: Path | None) -> list[str]:
             problems.append(f"identity_as_built {row['identity_as_built']} != canonical {canonical}")
         if row.get("identity_canonical", canonical) != canonical:
             problems.append(f"identity_canonical {row['identity_canonical']} != canonical {canonical}")
-        return problems
     if workdir is None:
-        problems.append("the row has no identity_as_built; pass the solve --workdir to check the solved build")
+        if "identity_as_built" not in row:
+            problems.append("the row has no identity_as_built; pass the solve --workdir to check the solved build")
         return problems
     bench = workdir / str(row.get("canonical_name", "phage_species_5_x10"))
-    found = (bench / "identity.sha256").read_text(encoding="utf-8").split()[0]
-    expected = SOLVE_IDENTITIES.get(tuple(row.get("colourings", [])), canonical)
-    print(f"solved build identity {found}, expected {expected}")
-    if found != expected:
-        problems.append(f"solved build identity {found} != expected {expected}")
+    if "identity_as_built" not in row:
+        found = (bench / "identity.sha256").read_text(encoding="utf-8").split()[0]
+        expected = SOLVE_IDENTITIES.get(tuple(row.get("colourings", [])), canonical)
+        print(f"solved build identity {found}, expected {expected}")
+        if found != expected:
+            problems.append(f"solved build identity {found} != expected {expected}")
     gold = read_yaml(bench / "manifest.yaml").get("gold_sha256")
+    print(f"solved build gold_sha256 {gold}, canonical {canonical_gold('phage_10')}")
     if gold != canonical_gold("phage_10"):
         problems.append(f"solved build gold_sha256 {gold} != canonical {canonical_gold('phage_10')}")
+    try:
+        check_gold_digest(bench)
+    except ContractError as exc:
+        problems.append(f"solved build ground_truth/: {exc}")
     return problems
 
 

@@ -52,6 +52,8 @@ def _summary(tmp_path: Path, row: dict, ok: bool) -> Path:
         ({"solved": "true"}, 1),
         ({"colourings": ["composition_kmeans", "decaying"], "colourings_skipped": ["kraken2"]}, 1),
         ({"colourings_skipped": ["kaiju"]}, 1),
+        ({"colourings": ["as_built", "composition_kmeans", "decaying"]}, 1),
+        ({"build_status": "contract"}, 1),
         ({"kraken2_input": "given"}, 1),
         ({"metrics": None}, 1),
         ({"identity_as_built": "0" * 64}, 1),
@@ -79,6 +81,32 @@ def test_solve_without_identity_as_built_reads_the_solved_build(tmp_path: Path) 
     assert checker.check_solve(summary, tmp_path / "work") == 0
     (bench / "identity.sha256").write_text(f"{'0' * 64}  identity\n", encoding="utf-8")
     assert checker.check_solve(summary, tmp_path / "work") == 1
+
+
+def test_solved_build_gold_is_checked_with_and_without_identity_as_built(tmp_path: Path) -> None:
+    from metametro.bench import canonical_gold
+    from metametro.bench.ground_truth import write_gold_digest
+    from metametro.tables import write_yaml
+
+    checker = _checker()
+    colourings = ["kraken2", "composition_kmeans", "decaying"]
+    bench = tmp_path / "work" / "phage_species_5_x10"
+    bench.mkdir(parents=True)
+    solved = checker.SOLVE_IDENTITIES[tuple(colourings)]
+    (bench / "identity.sha256").write_text(f"{solved}  identity\n", encoding="utf-8")
+    for row in (_row(colourings=colourings), _row(identity_as_built=None, colourings=colourings)):
+        summary = _summary(tmp_path, row, ok=True)
+        write_yaml(bench / "manifest.yaml", {"gold_sha256": canonical_gold("phage_10")})
+        assert checker.check_solve(summary, tmp_path / "work") == 0
+        write_yaml(bench / "manifest.yaml", {"gold_sha256": "0" * 64})
+        assert checker.check_solve(summary, tmp_path / "work") == 1
+        (bench / "ground_truth").mkdir(exist_ok=True)
+        (bench / "ground_truth" / "taxon_nodes.tsv").write_text("node_id\ttaxon\n", encoding="utf-8")
+        write_gold_digest(bench)
+        (bench / "ground_truth" / "taxon_nodes.tsv").write_text("node_id\ttaxon\nn1\t10665\n", encoding="utf-8")
+        write_yaml(bench / "manifest.yaml", {"gold_sha256": canonical_gold("phage_10")})
+        assert checker.check_solve(summary, tmp_path / "work") == 1
+        (bench / "gold.sha256").unlink()
 
 
 def test_identity_check_uses_canonical_identity_and_gold(tmp_path: Path) -> None:
