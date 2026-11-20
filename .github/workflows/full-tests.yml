@@ -56,3 +56,60 @@ jobs:
             esac
             if [[ "$s" == *.py ]]; then python "$s"; else bash "$s"; fi
           done
+
+  # Build phage_10 from the pinned genomes, check its identity against
+  # canonical_identity("phage_10"), and solve it with metaMalevich at a pinned
+  # commit. metaMalevich's exit code and ok flag are not trusted (#275); the
+  # phage_10 row must say build_status built and solved true.
+  phage10-solve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      METAMALEVICH_COMMIT: b0f3c736fd9973b8e53056fe860445fcbe4dab9a
+      SAMOVAR_COMMIT: d6bb8246f9e31c7890f4393aa92bc7e0aa53d593
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: "3.12"
+          auto-update-conda: true
+          conda-remove-defaults: true
+          activate-environment: metametro
+          environment-file: environment.yml
+      - name: Install MetaMetro, MEGAHIT, and metaMalevich's own dependencies
+        run: |
+          conda install -y -n metametro -c conda-forge -c bioconda megahit=1.2.9 pandas=3.0.6 altair=6.2.2
+          python -m pip install --no-deps --no-build-isolation -e .
+          command -v megahit megahit_toolkit
+      - name: Install Samovar (read simulator) at a pinned commit
+        run: |
+          git clone https://github.com/ctlab/samovar.git "$RUNNER_TEMP/samovar"
+          git -C "$RUNNER_TEMP/samovar" checkout "$SAMOVAR_COMMIT"
+          conda env create -n samovar -f "$RUNNER_TEMP/samovar/environment.yml"
+          (cd "$RUNNER_TEMP/samovar" && conda run -n samovar ./install.sh)
+          echo "$RUNNER_TEMP/samovar/bin" >> "$GITHUB_PATH"
+      - name: Fetch the pinned phage genomes
+        timeout-minutes: 15
+        run: metametro benchfetch phage_10
+      - name: Default build and canonical identity
+        timeout-minutes: 30
+        run: |
+          samovar --version
+          metametro benchbuild phage_10 --outdir "$RUNNER_TEMP/phage_10"
+          python scripts/check_phage10_solve.py identity "$RUNNER_TEMP/phage_10"
+      - name: Check out metaMalevich at the pinned commit
+        run: |
+          git clone https://github.com/dsmutin/metaMalevich.git "$RUNNER_TEMP/metaMalevich"
+          git -C "$RUNNER_TEMP/metaMalevich" checkout "$METAMALEVICH_COMMIT"
+          python -m pip install --no-deps --no-build-isolation -e "$RUNNER_TEMP/metaMalevich"
+      - name: metaMalevich solve on phage_10
+        timeout-minutes: 30
+        run: |
+          set +e
+          metamalevich solve --bench phage_10 --execute --workdir "$RUNNER_TEMP/solve" -o "$RUNNER_TEMP/solve.json"
+          echo "metamalevich solve exited $? (not used)"
+          set -e
+          python scripts/check_phage10_solve.py solve "$RUNNER_TEMP/solve.json"
