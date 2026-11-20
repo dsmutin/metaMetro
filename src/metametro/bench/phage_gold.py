@@ -1,7 +1,9 @@
 """Gold ``taxon`` labels of the phage benches, derived from the pinned genomes.
 
-A CFA node belongs to the pinned genome that contains a strict majority of
-the node's k-mers (both strands); any other node has no label. Its gold value
+A CFA node belongs to a pinned genome when exactly one genome has the largest
+count of the node's k-mer positions found in it (on either strand) and that
+count is more than half of the node's ``len - k + 1`` k-mer positions; a tie, a
+count of half or less, or a node shorter than ``k`` leaves it without a label. Its gold value
 is that genome's NCBI species taxid from ``genomes.tsv``. An edge carries the
 label its two ends share. ``materialize`` moves the ``taxon`` colours to
 ``ground_truth/taxon_nodes.tsv`` and ``taxon_edges.tsv``, so they are used only
@@ -25,7 +27,7 @@ VALUE_COLUMNS = ("taxon", "rank", "name", "genome", "accession", "record_taxid")
 
 
 def node_genomes(sequences: Mapping[str, str], genomes: Mapping[str, str], k: int) -> dict[str, str]:
-    """Map node id to the genome owning a strict majority of its k-mers, or ``""``."""
+    """Map node id to the single genome with most of its k-mer positions, if more than half, else ``""``."""
     names = sorted(genomes)
     genome_kmers: dict[str, set[str]] = {}
     for name in names:

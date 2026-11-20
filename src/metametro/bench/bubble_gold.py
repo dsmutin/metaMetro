@@ -13,7 +13,11 @@ sequence hashes), computed on the oriented sequences.
 A branch is labelled with the gold species shared by all its CFA nodes, or is
 unlabelled. ``class`` is ``inter_species`` when the labelled branches map to
 different species, ``intra_species`` when they map to one, and ``unresolved``
-when any branch is unlabelled.
+when any branch is unlabelled. ``type`` is ``strain`` and ``expected_action``
+``retain`` for ``inter_species``; otherwise ``type`` is the class and
+``expected_action`` is empty (the hand-built benches use ``strain``/``error``
+and ``retain``/``pop``). Nested or overlapping bubbles and branches longer than
+``max_internal`` unitigs are not gold.
 """
 
 from __future__ import annotations
