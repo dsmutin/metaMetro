@@ -30,7 +30,7 @@ def _bench() -> Path:
 def test_phage_10_gold_class_counts() -> None:
     folder = _bench()
     _, bubbles = read_tsv(folder / "ground_truth" / "bubbles.tsv")
-    assert Counter(row["class"] for row in bubbles) == {"inter_species": 92, "intra_species": 1, "error": 1}
+    assert Counter(row["class"] for row in bubbles) == {"inter_species": 92, "error": 1, "unresolved": 1}
     _, nodes = read_tsv(folder / "ground_truth" / "taxon_nodes.tsv")
     assert sum(1 for row in nodes if row["taxon"]) == 903
     header, membership = read_tsv(folder / "ground_truth" / "taxon_membership.tsv")

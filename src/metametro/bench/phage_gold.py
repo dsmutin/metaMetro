@@ -204,6 +204,26 @@ def read_taxon_membership(outdir: Path) -> dict[str, tuple[str, ...]] | None:
     return {row["node_id"]: tuple(name for name in genomes if row[name] == "1") for row in rows}
 
 
+def read_membership_counts(outdir: Path) -> dict[str, tuple[int, dict[str, int]]] | None:
+    """Map node id to ``(interior_kmers, {genome: interior hits})`` from ``taxon_membership.tsv``.
+
+    Returns ``None`` without the file or for a file written before
+    ``interior_kmers`` existed. Hits are recovered from the six-decimal fractions.
+    """
+    path = Path(outdir) / "ground_truth" / "taxon_membership.tsv"
+    if not path.is_file():
+        return None
+    header, rows = read_tsv(path)
+    if "interior_kmers" not in header:
+        return None
+    genomes = [column for column in header if column not in _MEMBERSHIP_FIXED and not column.endswith("_fraction")]
+    found: dict[str, tuple[int, dict[str, int]]] = {}
+    for row in rows:
+        total = int(row["interior_kmers"])
+        found[row["node_id"]] = (total, {name: round(float(row[f"{name}_fraction"]) * total) for name in genomes})
+    return found
+
+
 def informative_nodes(outdir: Path) -> set[str] | None:
     """Node ids with at least one interior k-mer in ``taxon_membership.tsv``, or ``None``."""
     path = Path(outdir) / "ground_truth" / "taxon_membership.tsv"

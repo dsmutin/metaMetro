@@ -10,9 +10,11 @@ smaller ``bubble_id`` is kept. ``bubble_id`` is BubbleBlower's sequence
 signature (the first 16 hex digits of SHA-256 over the source, sink, and branch
 sequence hashes), computed on the oriented sequences.
 
-A branch comes from the species shared by its CFA nodes in
-``ground_truth/taxon_membership.tsv`` (the single gold labels on a bench
-without that file); see ``bubble_rows`` for the classes ``inter_species``,
+``ground_truth/taxon_membership.tsv`` records membership (every genome with an
+interior k-mer of the node); bubble classes use the majority of interior
+k-mers instead: a branch comes from a species that holds more than half of
+the branch's interior k-mer positions (the single gold labels on a bench
+without that file). See ``bubble_rows`` for the classes ``inter_species``,
 ``intra_species``, ``error`` (a non-genomic branch beside genomic ones), and
 ``unresolved``. ``type`` is ``strain`` and ``expected_action``
 ``retain`` for ``inter_species``, ``error`` and ``pop`` for ``error``; otherwise
@@ -25,7 +27,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 from pathlib import Path
 
 from metametro.formats.cdbg.model import Cdbg
@@ -144,6 +146,7 @@ def bubble_rows(
     genome_of: dict[str, str],
     *,
     informative: Collection[str] | None = None,
+    node_kmers: Mapping[str, tuple[int, Mapping[str, int]]] | None = None,
 ) -> list[dict[str, str]]:
     """Gold rows for every bubble of ``cdbg``.
 
@@ -159,6 +162,13 @@ def bubble_rows(
     ``intra_species`` when every branch has the same species set, else
     ``inter_species``. Several species of one branch are joined by ``;`` in
     ``branch_species`` and ``branch_genomes``.
+
+    ``node_kmers`` (from ``taxon_membership.tsv``: per node, its interior k-mer
+    positions and the interior hits per species) replaces ``node_species`` and
+    ``informative`` with the majority rule: a branch comes from every species
+    that holds more than half of the branch's interior k-mer positions (summed
+    over its nodes). It is unknown when it has no interior k-mer, and
+    non-genomic when no species holds more than half.
     """
     members = {unitig.unitig_id: list(unitig.members) for unitig in cdbg.unitigs}
     rows: list[dict[str, str]] = []
@@ -170,15 +180,24 @@ def bubble_rows(
         for path in bubble.branches:
             nodes = [member for node in path for member in members[node[0]]]
             tokens.append(";".join(nodes))
-            used = nodes if informative is None else [node for node in nodes if node in informative]
-            sets = [frozenset(node_species.get(node, ())) for node in used]
-            shared = frozenset.intersection(*sets) if sets else frozenset()
-            if shared:
-                states.append("genomic")
-            elif sets and not frozenset().union(*sets) and informative is not None:
-                states.append("non_genomic")
+            if node_kmers is not None:
+                total = sum(node_kmers.get(node, (0, {}))[0] for node in nodes)
+                hits: dict[str, int] = {}
+                for node in nodes:
+                    for species, count in node_kmers.get(node, (0, {}))[1].items():
+                        hits[species] = hits.get(species, 0) + count
+                shared = frozenset(species for species, count in hits.items() if total and count * 2 > total)
+                states.append("unknown" if not total else "genomic" if shared else "non_genomic")
             else:
-                states.append("unknown")
+                used = nodes if informative is None else [node for node in nodes if node in informative]
+                sets = [frozenset(node_species.get(node, ())) for node in used]
+                shared = frozenset.intersection(*sets) if sets else frozenset()
+                if shared:
+                    states.append("genomic")
+                elif sets and not frozenset().union(*sets) and informative is not None:
+                    states.append("non_genomic")
+                else:
+                    states.append("unknown")
             species_sets.append(shared)
             labels.append(";".join(sorted(shared, key=int)))
         if "unknown" in states or "genomic" not in states:
@@ -215,18 +234,22 @@ def write_phage_bubbles(outdir: Path) -> Path:
     from metametro.bench.ground_truth import load_bench_gold
     from metametro.formats.cdbg.io import load_cdbg
 
-    from metametro.bench.phage_gold import informative_nodes, read_taxon_membership
+    from metametro.bench.phage_gold import read_membership_counts
 
     outdir = Path(outdir)
     _, values = read_tsv(outdir / "ground_truth" / "taxon_values.tsv")
     genome_of = {row["taxon"]: row["genome"] for row in values}
-    membership = read_taxon_membership(outdir)
+    membership = read_membership_counts(outdir)
+    cdbg = load_cdbg(outdir / "cdbg")
     if membership is None:
-        node_species = load_bench_gold(outdir).nodes
+        rows = bubble_rows(cdbg, load_bench_gold(outdir).nodes, genome_of)
     else:
         species_of = {row["genome"]: row["taxon"] for row in values}
-        node_species = {node: tuple(species_of[genome] for genome in genomes) for node, genomes in membership.items()}
-    rows = bubble_rows(load_cdbg(outdir / "cdbg"), node_species, genome_of, informative=informative_nodes(outdir))
+        node_kmers = {
+            node: (total, {species_of[genome]: count for genome, count in counts.items()})
+            for node, (total, counts) in membership.items()
+        }
+        rows = bubble_rows(cdbg, {}, genome_of, node_kmers=node_kmers)
     path = outdir / "ground_truth" / "bubbles.tsv"
     write_tsv(path, list(BUBBLE_COLUMNS), rows)
     return path

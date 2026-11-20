@@ -80,7 +80,7 @@ def external_specs() -> dict[str, BenchSpec]:
         "phage_species_5_x10": BenchSpec(
             name="phage_species_5_x10",
             canonical_identity="78121c1b05a5814bfc17ac3b7650ed5223a0f584cfada24e9224b7ba0364564c",
-            canonical_gold="3ec73bf444dabd55b03ec4ee23b405ccb20d281de406dbe8c0d3db51c63c4cb9",
+            canonical_gold="f1a26ea343963ed25ba33d20413f81fc69176ca3229b2ae815091be3f135db2a",
             assembler="megahit",
             properties="reads4000_k21",
             summary=phage + " 4000 paired fragments (the former phage_x10 run).",

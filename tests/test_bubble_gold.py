@@ -191,3 +191,62 @@ def test_a_non_genomic_branch_beside_a_genomic_one_is_an_error() -> None:
     assert row["class"] == "unresolved"
     [row] = bubble_rows(cdbg, {}, {}, informative={"nA", "nB"})
     assert row["class"] == "unresolved"
+
+
+def _variant_bubble(tmp_path: Path, branches: dict[str, str], locus: str) -> Path:
+    """One genome P+locus+Q; each branch node is P[-21:]+variant+Q[:21] (21-bp overlaps, k = 22)."""
+    import random
+
+    from metametro.bench.phage_gold import node_membership, overlapped_ends, write_taxon_membership
+    from metametro.converters.cfa_to_cdbg import cfa_to_cdbg
+    from metametro.formats.cdbg.io import dump_cdbg
+    from metametro.formats.cfa.model import CfaGraph
+
+    rng = random.Random(11)
+    P, Q = ("".join(rng.choice("ACGT") for _ in range(40)) for _ in range(2))
+    genomes = {"G": P + locus + Q}
+    sequences = {"S": P, "T": Q, **{name: P[-21:] + variant + Q[:21] for name, variant in branches.items()}}
+    arcs = [("S", name) for name in branches] + [(name, "T") for name in branches]
+    edges = [{"edge_id": f"e{i}", "source": s, "target": t, "orientation": "++"} for i, (s, t) in enumerate(arcs)]
+    graph = CfaGraph(
+        metadata={
+            "schema_version": "1.0",
+            "graph_id": "toy",
+            "graph_type": "de_bruijn",
+            "k": 22,
+            "features": {"edge": {"orientation": "orientation"}},
+        },
+        sequences=sequences,
+        nodes=[{"node_id": name} for name in sequences],
+        edges=edges,
+        node_header=["node_id"],
+        edge_header=["edge_id", "source", "target", "orientation"],
+    )
+    dump_cdbg(cfa_to_cdbg(graph), tmp_path / "cdbg")
+    write_tsv(tmp_path / "ground_truth" / "taxon_values.tsv", ["taxon", "genome"], [{"taxon": "1", "genome": "G"}])
+    membership = node_membership(sequences, genomes, 21, ends=overlapped_ends(edges), overlap=21)
+    write_taxon_membership(tmp_path, membership)
+    return tmp_path
+
+
+def _mutate(sequence: str, *positions: int) -> str:
+    swap = {"A": "C", "C": "G", "G": "T", "T": "A"}
+    letters = list(sequence)
+    for position in positions:
+        letters[position] = swap[letters[position]]
+    return "".join(letters)
+
+
+def test_two_error_variants_of_one_locus_are_unresolved_not_intra(tmp_path: Path) -> None:
+    import random
+
+    from metametro.bench.bubble_gold import write_phage_bubbles
+    from metametro.bench.phage_gold import read_taxon_membership
+    from metametro.tables import read_tsv
+
+    locus = "".join(random.Random(3).choice("ACGT") for _ in range(30))
+    bench = _variant_bubble(tmp_path, {"a": _mutate(locus, 5, 25), "b": _mutate(locus, 8, 22)}, locus)
+    assert read_taxon_membership(bench)["a"] == ("G",) and read_taxon_membership(bench)["b"] == ("G",)
+    write_phage_bubbles(bench)
+    _, rows = read_tsv(bench / "ground_truth" / "bubbles.tsv")
+    assert [(row["class"], row["branch_genomes"], row["expected_action"]) for row in rows] == [("unresolved", ",", "")]
