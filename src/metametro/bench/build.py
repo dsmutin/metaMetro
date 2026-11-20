@@ -401,6 +401,11 @@ def _external(
     gtfs: Path | None,
     requested: str,
 ) -> BuildResult:
+    if execute and spec.name.startswith("phage_species_5"):
+        from metametro.bench.genomes import check_genomes
+
+        check_genomes(spec.name, repo_root() / "data" / "raw" / "genomes")
+        require_programs(spec, ("samovar", "megahit", "megahit_toolkit"))
     write_external_contract(spec, destination)
     if not execute:
         digest = contract_identity(destination)
@@ -417,11 +422,7 @@ def _external(
             spec=spec, outdir=destination, identity=digest, colourings=(), status="contract"
         )
     if spec.name.startswith("phage_species_5"):
-        require_programs(spec, ("samovar", "megahit", "megahit_toolkit"))
         genomes = repo_root() / "data" / "raw" / "genomes"
-        missing = [name for name in ("T1", "T3", "T4", "T5", "T7") if not (genomes / f"{name}.fna").is_file()]
-        if missing:
-            raise ContractError([f"missing genome FASTA under data/raw/genomes: {', '.join(missing)}"])
         script = repo_root() / "scripts" / "phage_baseline.py"
         completed = subprocess.run(
             [
