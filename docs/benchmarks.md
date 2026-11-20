@@ -22,7 +22,7 @@ The default output directory is
 data/bench/{bench_name}/{assembler}/{properties}/
 ```
 
-That tree is gitignored. A build writes:
+It is relative to the root of the MetaMetro checkout, not to the current directory, and that tree is gitignored. An installed package with no checkout above it (for example the conda package) has no default: pass `--outdir`, or `outdir=` / `root=` in Python, otherwise the build stops with `ContractError`. A build writes:
 
 | Path | Role |
 | --- | --- |

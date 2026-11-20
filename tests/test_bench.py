@@ -380,3 +380,15 @@ def test_selected_colouring_that_cannot_run_fails(tmp_path: Path) -> None:
     """An explicit colouring that cannot run on the graph is an error, not a silent skip."""
     with pytest.raises(ContractError, match="decaying"):
         build("synthetic_reads_2", outdir=tmp_path / "out", colourings=("decaying",))
+
+
+def test_checkout_root_rejects_an_installed_package(tmp_path: Path) -> None:
+    """Without a checkout above the package, data/bench has no default location."""
+    from metametro.bench.paths import checkout_root, repo_root
+
+    assert (repo_root() / "pyproject.toml").is_file()
+    installed = tmp_path / "lib" / "site-packages" / "metametro" / "bench" / "paths.py"
+    installed.parent.mkdir(parents=True)
+    installed.write_text("", encoding="utf-8")
+    with pytest.raises(ContractError, match="--outdir"):
+        checkout_root(installed)

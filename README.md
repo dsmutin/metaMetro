@@ -90,7 +90,7 @@ python examples/edit_proposal/run.py
 
 `examples/toy/run.py` checks the CLI baseline JSON (`status`, `ok`, `input_path`). The external phage run (Samovar reads, MEGAHIT intermediate graph, colouring, CDBG, CGT, both GCN backends) is `scripts/phage_baseline.py`, recorded in [docs/baseline-run.md](docs/baseline-run.md).
 
-Benchmark graphs are built with `metametro benchbuild`. The default directory is `data/bench/{name}/{assembler}/{properties}/` and is gitignored. See [docs/benchmarks.md](docs/benchmarks.md).
+Benchmark graphs are built with `metametro benchbuild`. The default directory is `data/bench/{name}/{assembler}/{properties}/` under the root of the checkout, and it is gitignored. Outside a checkout, for example from the conda package, pass `--outdir`. See [docs/benchmarks.md](docs/benchmarks.md).
 
 ```bash
 metametro benchbuild --list
@@ -106,7 +106,7 @@ pytest -m mandatory    # every commit
 pytest                 # mandatory and optional
 ```
 
-The mandatory marker selects 171 tests. One further test is marked optional and runs when PyTorch Geometric is installed. Genome-binning AMBER scores call `amber.py` from [CAMI-challenge/AMBER](https://github.com/CAMI-challenge/AMBER) tag `v2.0.17-beta`. Set `AMBER_SRC` to that checkout.
+The mandatory marker selects 172 tests. One further test is marked optional and runs when PyTorch Geometric is installed. Genome-binning AMBER scores call `amber.py` from [CAMI-challenge/AMBER](https://github.com/CAMI-challenge/AMBER) tag `v2.0.17-beta`. Set `AMBER_SRC` to that checkout.
 
 ## License
 

@@ -7,9 +7,28 @@ from pathlib import Path
 from metametro.bench.spec import BenchSpec
 
 
+def checkout_root(package_file: Path) -> Path:
+    """Return the checkout that contains ``package_file``, or raise ``ContractError``.
+
+    An installed package (for example the conda package in site-packages) has no
+    checkout above it, so ``data/bench`` has no default location there.
+    """
+    root = Path(package_file).resolve().parents[3]
+    if (root / "pyproject.toml").is_file() and (root / "src" / "metametro").is_dir():
+        return root
+    from metametro.errors import ContractError
+
+    raise ContractError(
+        [
+            "metametro is not running from a checkout, so data/bench has no default location; "
+            "pass --outdir (or outdir=/root= in Python)"
+        ]
+    )
+
+
 def repo_root() -> Path:
     """Return the MetaMetro checkout that contains this package."""
-    return Path(__file__).resolve().parents[3]
+    return checkout_root(Path(__file__))
 
 
 def default_outdir(spec: BenchSpec, *, root: Path | None = None) -> Path:
