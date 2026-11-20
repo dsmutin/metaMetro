@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from metametro.bench.kraken_pin import checked_kraken_pin, kraken_pin
+from metametro.bench.genomes import pinned_genomes
+from metametro.bench.kraken_pin import checked_kraken_pin, kraken_pin, pinned_taxdump
 from metametro.contracts.classifiers import colour_from_kraken2_file, parse_kraken2_output
 from metametro.errors import ContractError
 from metametro.formats.cfa.model import CfaGraph
@@ -68,3 +69,33 @@ def test_pin_is_used_only_for_the_graph_it_was_made_from(tmp_path: Path) -> None
     with pytest.raises(ContractError, match="--kraken-db or --kraken-output"):
         checked_kraken_pin("phage_10", _graph("ACGTACGA"), tmp_path / "other.fna", pins=pins)
     assert checked_kraken_pin("phage_species_5", _graph(), tmp_path / "x.fna", pins=pins) is None
+
+
+def _dmp(path: Path) -> list[list[str]]:
+    return [line.rstrip("\n").rstrip("|").rstrip("\t").split("\t|\t") for line in path.read_text().splitlines(True)]
+
+
+def test_pinned_taxdump_has_every_lineage_to_root() -> None:
+    folder = pinned_taxdump("phage_10")
+    assert folder is not None and folder == kraken_pin("phage_10")[1]["taxdump"]["dir"]
+    parent = {int(row[0]): int(row[1]) for row in _dmp(folder / "nodes.dmp")}
+    named = {int(row[0]) for row in _dmp(folder / "names.dmp") if row[3] == "scientific name"}
+    output = kraken_pin("phage_10")[0]
+    wanted: set[int] = set()
+    for line in output.read_text().splitlines():
+        fields = line.split("\t")
+        wanted.add(int(fields[2]))
+        wanted.update(int(token.split(":")[0]) for token in fields[4].split() if token.split(":")[0].isdigit())
+    for genome in pinned_genomes("phage_10"):
+        wanted.update((genome.taxid, genome.species_taxid))
+    wanted.discard(0)
+    for taxon in wanted:
+        seen = set()
+        while taxon != 1:
+            assert taxon in parent and taxon in named, taxon
+            assert taxon not in seen
+            seen.add(taxon)
+            taxon = parent[taxon]
+    assert parent[1] == 1 and 1 in named
+    assert len(parent) == kraken_pin("phage_10")[1]["taxdump"]["taxids"]
+    assert pinned_taxdump("phage_species_5") is None

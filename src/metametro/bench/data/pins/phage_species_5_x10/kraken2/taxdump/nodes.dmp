@@ -1,0 +1,80 @@
+1	|	1	|	no rank	|		|	8	|	0	|	1	|	0	|	0	|	0	|	0	|	0	|		|
+10239	|	1	|	acellular root	|		|	9	|	0	|	1	|	0	|	0	|	0	|	0	|	0	|		|
+10663	|	1198136	|	genus	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+10665	|	10663	|	species	|	TT	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+10666	|	2844134	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+10726	|	187218	|	species	|	TT	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+10759	|	2732706	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+10760	|	1985738	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+110456	|	2731653	|	genus	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+110457	|	2732714	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+187217	|	1910999	|	genus	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+187218	|	2732013	|	genus	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+532076	|	2733871	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+1054480	|	2956504	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+1198136	|	2946170	|	subfamily	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+1647411	|	2733988	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+1837867	|	2844181	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+1837875	|	2844226	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+1863009	|	2846204	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+1910999	|	2731691	|	subfamily	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+1914165	|	1198136	|	genus	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+1921008	|	187217	|	species	|	TT	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+1985738	|	110456	|	species	|	TT	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2024321	|	2846205	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+2025816	|	2844188	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+2060720	|	2844229	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+2268591	|	2733881	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+2321390	|	2846680	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	1	|	0	|		|
+2492962	|	1921008	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|		|
+2499909	|	2955756	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|		|
+2502306	|	2844199	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|		|
+2528528	|	2733880	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|		|
+2560145	|	2732047	|	genus	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+2608316	|	187217	|	species	|	TS	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2681598	|	10665	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|		|
+2695836	|	10726	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|		|
+2712979	|	187218	|	species	|	TN	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2716728	|	2843958	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|		|
+2731341	|	10239	|	realm	|	DX	|	9	|	1	|	1	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+2731360	|	2731341	|	kingdom	|		|	9	|	1	|	1	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+2731618	|	2731360	|	phylum	|		|	9	|	1	|	11	|	0	|	0	|	1	|	0	|	0	|	code compliant	|
+2731619	|	2731618	|	class	|		|	3	|	0	|	11	|	0	|	0	|	1	|	0	|	0	|	code compliant	|
+2731653	|	3424637	|	subfamily	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+2731690	|	2731619	|	family	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+2731691	|	2731619	|	family	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+2732013	|	2731690	|	subfamily	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+2732047	|	2731691	|	subfamily	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+2732693	|	2731653	|	genus	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+2732706	|	2732693	|	species	|	TT	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2732714	|	2732693	|	species	|	TY	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2733871	|	110456	|	species	|	TA	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2733880	|	110456	|	species	|	TN	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2733881	|	110456	|	species	|	TT	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2733988	|	187218	|	species	|	TN	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2736192	|	2560145	|	species	|	HH	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2777378	|	3432752	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|		|
+2843958	|	10663	|	species	|	TZ	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2844134	|	10663	|	species	|	TT	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2844181	|	10663	|	species	|	TU	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2844188	|	10663	|	species	|	TE	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2844199	|	10663	|	species	|	TG	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2844226	|	10663	|	species	|	TP	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2844229	|	10663	|	species	|	TP	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2846204	|	10663	|	species	|	TS	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2846205	|	10663	|	species	|	TS	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2846680	|	10663	|	species	|	TP	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2848074	|	2736192	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|		|
+2848075	|	2608316	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|		|
+2860371	|	3432745	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|		|
+2911669	|	3433024	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|		|
+2946170	|	3420545	|	family	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+2955756	|	1914165	|	species	|	DA	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2956504	|	10663	|	species	|	TV	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+2991865	|	2712979	|	no rank	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	specified	|
+3420540	|	2731619	|	order	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+3420545	|	2731619	|	order	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+3424637	|	3420540	|	family	|		|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant	|
+3432745	|	187218	|	species	|	TI	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+3432752	|	187218	|	species	|	TN	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
+3433024	|	187217	|	species	|	TC	|	3	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|	code compliant; specified	|
