@@ -23,7 +23,7 @@ class Stop(Exception):
 def _graph() -> CfaGraph:
     return CfaGraph(
         metadata={"schema_version": "1.0", "graph_id": "toy_phage", "graph_type": "de_bruijn", "k": 3},
-        sequences={"n1": "ACGTACGT", "n2": "TTTTGGGG"},
+        sequences={"n1": "ACGTACGT", "n2": "GTTTGGGG"},
         nodes=[{"node_id": "n1"}, {"node_id": "n2"}],
         edges=[{"edge_id": "e1", "source": "n1", "target": "n2"}],
         node_header=["node_id"],
@@ -44,17 +44,24 @@ def phage_build(monkeypatch: pytest.MonkeyPatch) -> dict[str, list]:
         calls["pin"].append(bench)
         return Path("/pinned/nodes.kraken")
 
-    def materialize(graph: CfaGraph, outdir: Path, ctx: object, **_kwargs: object) -> object:
-        calls["ctx"].append(ctx)
-        raise Stop
-
     monkeypatch.setattr("metametro.bench.genomes.check_genomes", lambda *_args: None)
     monkeypatch.setattr(build_module, "require_programs", lambda *_args: None)
     monkeypatch.setattr(build_module.subprocess, "run", run)
     monkeypatch.setattr("metametro.bench.phage_gold.paint_phage_gold", lambda graph, *_args: graph)
     monkeypatch.setattr("metametro.bench.kraken_pin.checked_kraken_pin", pin)
-    monkeypatch.setattr(build_module, "materialize", materialize)
     return calls
+
+
+@pytest.fixture
+def stop_at_materialize(phage_build: dict[str, list], monkeypatch: pytest.MonkeyPatch) -> dict[str, list]:
+    """End the build at ``materialize``, recording the context it was given."""
+
+    def materialize(graph: CfaGraph, outdir: Path, ctx: object, **_kwargs: object) -> object:
+        phage_build["ctx"].append(ctx)
+        raise Stop
+
+    monkeypatch.setattr(build_module, "materialize", materialize)
+    return phage_build
 
 
 @pytest.mark.parametrize(
@@ -62,19 +69,57 @@ def phage_build(monkeypatch: pytest.MonkeyPatch) -> dict[str, list]:
     [(None, True), (("as_built", "kraken2"), True), (("as_built", "composition_kmeans"), False)],
 )
 def test_phage_build_uses_the_kraken_pin_only_when_kraken2_can_run(
-    tmp_path: Path, phage_build: dict[str, list], colourings: tuple[str, ...] | None, pinned: bool
+    tmp_path: Path, stop_at_materialize: dict[str, list], colourings: tuple[str, ...] | None, pinned: bool
 ) -> None:
     with pytest.raises(Stop):
         build("phage_10", outdir=tmp_path / "phage_10", execute=True, colourings=colourings)
-    assert phage_build["pin"] == (["phage_species_5_x10"] if pinned else [])
+    assert stop_at_materialize["pin"] == (["phage_species_5_x10"] if pinned else [])
     expected = Path("/pinned/nodes.kraken") if pinned else None
-    assert phage_build["ctx"][0].kraken_output == expected
+    assert stop_at_materialize["ctx"][0].kraken_output == expected
 
 
-def test_a_given_kraken_output_wins_over_the_pin(tmp_path: Path, phage_build: dict[str, list]) -> None:
+def test_a_given_kraken_output_wins_over_the_pin(tmp_path: Path, stop_at_materialize: dict[str, list]) -> None:
     given = tmp_path / "given.kraken"
     given.write_text("U\tn1\t0\t8\t0:6\n", encoding="utf-8")
     with pytest.raises(Stop):
         build("phage_10", outdir=tmp_path / "phage_10", execute=True, kraken_output=given)
-    assert phage_build["pin"] == []
-    assert phage_build["ctx"][0].kraken_output == given
+    assert stop_at_materialize["pin"] == []
+    assert stop_at_materialize["ctx"][0].kraken_output == given
+
+
+def test_phage_build_writes_taxon_values_and_bubbles_before_identity_and_manifest(
+    tmp_path: Path, phage_build: dict[str, list], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    outdir = tmp_path / "phage_10"
+    seen: list[tuple[bool, bool, bool]] = []
+
+    def bubbles(path: Path) -> Path:
+        seen.append(
+            (
+                (path / "ground_truth" / "taxon_values.tsv").is_file(),
+                (path / "identity.sha256").exists(),
+                (path / "manifest.yaml").exists(),
+            )
+        )
+        return path / "ground_truth" / "bubbles.tsv"
+
+    monkeypatch.setattr("metametro.bench.bubble_gold.write_phage_bubbles", bubbles)
+    result = build("phage_10", outdir=outdir, execute=True, colourings=("as_built",))
+    assert seen == [(True, False, False)]
+    assert result.status == "built" and (outdir / "identity.sha256").is_file()
+
+
+def test_failed_phage_ground_truth_leaves_no_identity_or_manifest(
+    tmp_path: Path, phage_build: dict[str, list], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    outdir = tmp_path / "phage_10"
+
+    def bubbles(path: Path) -> Path:
+        raise RuntimeError("bubble gold failed")
+
+    monkeypatch.setattr("metametro.bench.bubble_gold.write_phage_bubbles", bubbles)
+    with pytest.raises(RuntimeError, match="bubble gold failed"):
+        build("phage_10", outdir=outdir, execute=True, colourings=("as_built",))
+    assert (outdir / "cdbg").is_dir()
+    assert not (outdir / "identity.sha256").exists()
+    assert not (outdir / "manifest.yaml").exists()

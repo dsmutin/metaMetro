@@ -463,11 +463,19 @@ def _external(
             if pinned is not None:
                 found["kraken_output"] = pinned
         ctx = classifiers.context(colourings, **found)
-        made = materialize(graph, destination, ctx, gold_namespaces=spec.gold_namespaces)
-        write_taxon_values(destination, spec.name)
         from metametro.bench.bubble_gold import write_phage_bubbles
 
-        write_phage_bubbles(destination)
+        def write_phage_ground_truth(outdir: Path) -> None:
+            write_taxon_values(outdir, spec.name)
+            write_phage_bubbles(outdir)
+
+        made = materialize(
+            graph,
+            destination,
+            ctx,
+            gold_namespaces=spec.gold_namespaces,
+            before_identity=write_phage_ground_truth,
+        )
         _finish_manifest(
             spec,
             destination,

@@ -152,3 +152,32 @@ def test_tampered_pinned_output_is_rejected(tmp_path: Path) -> None:
         kraken_pin("phage_10", pins=pins)
     with pytest.raises(ContractError, match="does not have the SHA-256 pinned"):
         checked_kraken_pin("phage_10", _graph(), tmp_path / "nodes.fna", pins=pins)
+
+
+def _with_taxdump(tmp_path: Path) -> Path:
+    pins = _pin(tmp_path)
+    folder = pins / "phage_species_5_x10" / "kraken2"
+    dump = folder / "taxdump"
+    dump.mkdir()
+    (dump / "nodes.dmp").write_text("1\t|\t1\t|\tno rank\t|\n", encoding="utf-8")
+    (dump / "names.dmp").write_text("1\t|\troot\t|\t\t|\tscientific name\t|\n", encoding="utf-8")
+    meta = folder / "kraken2.yaml"
+    taxdump = {
+        "path": "taxdump",
+        "nodes_sha256": hashlib.sha256((dump / "nodes.dmp").read_bytes()).hexdigest(),
+        "names_sha256": hashlib.sha256((dump / "names.dmp").read_bytes()).hexdigest(),
+    }
+    write_yaml(meta, {**read_yaml(meta), "taxdump": taxdump})
+    return pins
+
+
+def test_tampered_or_missing_taxdump_is_rejected(tmp_path: Path) -> None:
+    pins = _with_taxdump(tmp_path)
+    dump = pins / "phage_species_5_x10" / "kraken2" / "taxdump"
+    assert pinned_taxdump("phage_10", pins=pins) == dump
+    (dump / "names.dmp").write_text("1\t|\tall\t|\t\t|\tscientific name\t|\n", encoding="utf-8")
+    with pytest.raises(ContractError, match="names.dmp is missing or does not have the SHA-256"):
+        pinned_taxdump("phage_10", pins=pins)
+    (dump / "names.dmp").unlink()
+    with pytest.raises(ContractError, match="names.dmp is missing"):
+        kraken_pin("phage_10", pins=pins)

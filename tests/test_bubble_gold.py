@@ -81,3 +81,32 @@ def test_loader_reads_the_older_bubble_file_and_needs_one(tmp_path: Path) -> Non
     (bubble,) = load_bench_gold_bubbles(tmp_path)
     assert bubble.branches == (("A",), ("B",))
     assert bubble.bubble_class == "" and bubble.branch_species == ()
+
+
+def _toy(arcs: list[tuple[str, str]]) -> Cdbg:
+    names = sorted({name for arc in arcs for name in arc})
+    sequences = ["AAAC", "AAAG", "AACA", "AACC", "AACG", "AAGA", "AAGC", "AAGG"]
+    return Cdbg(
+        metadata={},
+        k=3,
+        unitigs=[Unitig(f"u{name}", sequences[index], [f"n{name}"], []) for index, name in enumerate(names)],
+        links=[Link(f"e{index:02d}", f"u{a}", f"u{b}", "++") for index, (a, b) in enumerate(arcs)],
+        mapping=[],
+    )
+
+
+def test_only_the_inner_bubble_of_a_nested_pair_is_gold() -> None:
+    arcs = [("S", "A"), ("S", "B"), ("A", "X"), ("A", "Y"), ("X", "Z"), ("Y", "Z"), ("Z", "T"), ("B", "T")]
+    bubbles = strand_bubbles(_toy(arcs))
+    assert [(bubble.source, bubble.sink) for bubble in bubbles] == [(("uA", "+"), ("uZ", "+"))]
+    assert {bubble.branches for bubble in bubbles} == {((("uX", "+"),), (("uY", "+"),))}
+
+
+def test_a_direct_link_is_an_empty_unresolved_branch() -> None:
+    cdbg = _toy([("S", "A"), ("S", "T"), ("A", "T")])
+    [bubble] = strand_bubbles(cdbg)
+    assert bubble.branches == ((("uA", "+"),), ())
+    [row] = bubble_rows(cdbg, {"nA": ("10665",)}, {"10665": "T4"})
+    assert row["branch_ids"] == "nA,"
+    assert row["class"] == "unresolved" and row["type"] == "unresolved" and row["expected_action"] == ""
+    assert row["branch_species"] == "10665,"

@@ -8,7 +8,7 @@ colouring and no graph file sees them.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -46,11 +46,15 @@ def materialize(
     ctx: BuildContext,
     *,
     gold_namespaces: Iterable[str] = GOLD_NAMESPACES,
+    before_identity: Callable[[Path], object] | None = None,
 ) -> Materialized:
     """Apply colourings, reject target leakage, and write the three graphs.
 
     ``gold_namespaces`` is the bench's declared gold set; it is written to
     ``manifest.yaml`` so loaders refuse those namespaces as colours.
+    ``before_identity(outdir)`` runs after the graphs and gold are written and
+    before ``identity.sha256`` and ``manifest.yaml``, so a step that fails there
+    leaves no folder that looks built.
     """
     declared = tuple(dict.fromkeys(str(name) for name in gold_namespaces))
     graph, gold = split_gold(graph, declared)
@@ -85,6 +89,8 @@ def materialize(
     assert_cgt_no_target_leak(cgt)
     assert_cgt_matches_cdbg(cgt, cdbg)
     dump_cgt(cgt, outdir / "cgt")
+    if before_identity is not None:
+        before_identity(outdir)
     applied = tuple(names)
     digest = graph_identity(coloured, colourings=applied, ground_truth=gold_identity_lines(gold))
     write_identity(outdir / "identity.sha256", digest)
