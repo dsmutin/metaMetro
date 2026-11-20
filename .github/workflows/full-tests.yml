@@ -2,21 +2,24 @@ name: full tests
 
 # Optional pytest, toy example, and extra examples.
 # Runs on push to main, on a published release, and on demand.
-# Pull requests run only required-tests.yml.
+# A pull request to main runs only the phage10-solve job here (and required-tests.yml).
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   release:
     types: [published]
   workflow_dispatch:
 
 concurrency:
-  group: full-tests
+  group: full-tests-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   full:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     defaults:

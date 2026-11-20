@@ -46,7 +46,7 @@ Replace baseline bodies with real implementations. Keep the documented return ke
 | Optional | `optional` | `pytest` (all) | push to main, release, or workflow_dispatch; Action `full-tests` |
 | Examples | — | `python examples/toy/run.py` | full CI; after features that touch the CLI |
 | Extra examples | — | extra `examples/*/run.py` or `pipeline.sh` | full CI when those files exist |
-| phage_10 solve | — | job `phage10-solve`: `benchfetch phage_10`, a default build checked against `canonical_identity("phage_10")`, then metaMalevich `solve` at a pinned commit; `scripts/check_phage10_solve.py` requires the phage_10 row to have `build_status` `built`, `solved` true, `kraken2` applied from the MetaMetro pin with no colouring skipped, and metrics, and checks the identity and gold digest of the build solve made, ignoring the exit code and `ok` | same triggers as `full-tests` (push to main, release, workflow_dispatch) |
+| phage_10 solve | — | job `phage10-solve`: `benchfetch phage_10`, a default build checked against `canonical_identity("phage_10")`, then metaMalevich `solve` at a pinned commit; `scripts/check_phage10_solve.py` requires the phage_10 row to have `build_status` `built`, `solved` true, `kraken2` applied from the MetaMetro pin with no colouring skipped, and metrics, and checks the identity and gold digest of the build solve made, ignoring the exit code and `ok` | push to main, release, workflow_dispatch, and every pull request to main (it is not a required check unless branch protection makes it one) |
 
 Do not mark a contract test `optional`. Optional tests are slow, extra, or nice-to-have.
 
