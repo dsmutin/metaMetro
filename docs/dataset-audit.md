@@ -1,5 +1,7 @@
 # Dataset audit
 
+> Historical snapshot from 2026-09-22. It is not updated: benchmark names, paths, and layout may differ from the current code. Current benchmarks are in [benchmarks.md](benchmarks.md).
+
 **Date:** 2026-09-22
 **Auditor:** coding agent
 **Overall status:** Ready with warnings

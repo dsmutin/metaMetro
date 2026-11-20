@@ -1,7 +1,9 @@
 # Phage baseline run
 
+> Historical snapshot from 2026-09-22. It is not updated: benchmark names, paths, and layout may differ from the current code. Current benchmarks are in [benchmarks.md](benchmarks.md).
+
 **Date:** 2026-09-22
-**Command:** `PYTHONPATH=src python3 scripts/phage_baseline.py --genomes data/raw/genomes --work data/work/phage_x10 --k 21 --total-reads 4000 --epochs 20 --samovar /mnt/tank/scratch/dsmutin/tools/my/samovar/samovar/bin/samovar --megahit /mnt/tank/scratch/dsmutin/tools/my/samovar/samovar/.cache/samovar/envs/megahit/bin/megahit`
+**Command:** `PYTHONPATH=src python3 scripts/phage_baseline.py --genomes data/raw/genomes --work data/work/phage_x10 --k 21 --total-reads 4000 --epochs 20 --samovar <path/to/samovar> --megahit <path/to/megahit>`
 
 Samovar `generate` writes `.generate/generate.sh`. That script's Snakemake job calls InSilicoSeq. MEGAHIT 1.2.9 is the binary in the Samovar cache. The graph is not `final.contigs.fa`. It is `intermediate_contigs/k21.contigs.fa` converted with `megahit_toolkit contig2fastg 21`.
 

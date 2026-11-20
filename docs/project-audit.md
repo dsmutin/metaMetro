@@ -1,7 +1,9 @@
 # Project audit
 
+> Historical snapshot from 2026-09-22. It is not updated: benchmark names, paths, and layout may differ from the current code. Current benchmarks are in [benchmarks.md](benchmarks.md).
+
 **Date:** 2026-09-22
-**Repository:** `/mnt/tank/scratch/dsmutin/tools/my/metametro`
+**Repository:** `<path/to/metametro>`
 **Branch / commit:** `main`, no commits yet (empty GitHub clone plus local files)
 **Auditor mode:** Read-only relative to the audit; the implementation was written in this session
 **Harness:** tool profile (`.cursor/rules/harness.mdc`)

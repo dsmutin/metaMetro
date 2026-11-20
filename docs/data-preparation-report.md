@@ -1,5 +1,7 @@
 # Data preparation report
 
+> Historical snapshot from 2026-09-22. It is not updated: benchmark names, paths, and layout may differ from the current code. Current benchmarks are in [benchmarks.md](benchmarks.md).
+
 **Date:** 2026-09-22
 **Mode:** Full execution for five RefSeq phage genomes, then a local simulation baseline
 **Overall status:** Partial
