@@ -158,13 +158,13 @@ Features, training labels, colours, predictions, and confidence are different ob
 | --- | --- |
 | `X_node` / `X_edge` | Numeric features used by a model. Described by the feature registry. |
 | `y_node` / `y_edge` | Integer training labels. They are not columns of `X` and are not concatenated into `X`. |
-| `C_node` / `C_edge` | Sample colours. A colour is not a feature and not a label. |
+| `C_node` / `C_edge` | Colours: one column per CFA `color_id`, from every colour namespace on the graph (`sample`, `taxon`, `composition`, `kraken2`, `kaiju`, `decaying`, and others), not only samples. A colour is not a feature and not a label. |
 | prediction | A separate object joined by `dense_id`, `source_id`, and CFA ids. It is not written into the CGT arrays. |
 | confidence | A field on that prediction. The NumPy and PyG softmax models set it equal to the predicted class probability. That is not a second uncertainty estimator and not an accuracy. |
 
 `indices[j]`, `edge_features[j]`, `edge_labels[j]`, and `edge_colors[j]` are the same directed adjacency entry. Node row `i` matches dense id `i`. Feature names and dtypes are in `metadata.yaml`. Colour columns follow sorted `color_id`. For this minimal schema the colour matrix is dense; a bitset or a sparse matrix is a non-breaking physical choice as long as the node-to-colour-set semantics stay the same.
 
-`C` is a `uint8` membership mask with values 0 and 1. Node and edge masks have the same width. An optional float32 channel, `node_color_weights.npy` and `edge_color_weights.npy`, stores a score in `[0, 1]` on those same columns. A directory that omits both files has no probability channel and still loads. A positive weight requires mask value 1. The weights are not features and are not concatenated into `X`. A hard Kraken taxid stays a mask bit. A Kraken probability uses the weight channel beside that bit. Contig colouring from Kraken2 or Kaiju is `colour_from_kraken2_file` / `colour_from_kaiju_file`, registered as auto colourings on `benchbuild`.
+`C` is a `uint8` membership mask with values 0 and 1. Node and edge masks have the same width. An optional float32 channel, `node_color_weights.npy` and `edge_color_weights.npy`, stores a score in `[0, 1]` on those same columns. A directory that omits both files has no probability channel and still loads. A positive weight requires mask value 1. The weights are not features and are not concatenated into `X`. A hard Kraken taxid stays a mask bit. Only `cgt_from_csr` fills the weight channel: the Kraken2 and Kaiju colourings and `cdbg_to_cgt` write mask bits only, so no Kraken2 or Kaiju score is stored in it. Contig colouring from Kraken2 or Kaiju is `colour_from_kraken2_file` / `colour_from_kaiju_file`, registered as auto colourings on `benchbuild`.
 
 `cgt_from_csr` builds a CGT from an external CSR adjacency, the layout used by a VAEGbin bundle. It does not compact a CFA and it does not allocate a dense `N×N` matrix. The caller supplies node ids. When CFA ids are omitted, each node id is stored as its own single CFA id; that id is the caller's, not a biological name assigned here. Edge features are optional. A 1-d vector is the column `weight`. Missing edge features stay width 0; the converter does not fill them with ones. Within each CSR row, targets are sorted and edge features, edge colours, and edge colour weights move with that slot. A repeated target in one row is an error. If node colours are passed and edge colours are not, every edge is uncoloured at the same colour width. Colours are not copied into `X`.
 
@@ -223,4 +223,4 @@ The new graph's `graph_id` differs from the parent. `metadata.edit_provenance` s
 
 ## Shared fixtures
 
-`mock_cfa()` is the bubble: 4 nodes, 5 edges, 2 samples, labels `genome_001`, `genome_002`, and `unclassified`, one multi-colour node (`n000002`), and one multi-colour edge. `chain_cfa()` is the compaction mock. `synthetic_genomes()` is the two-genome metagenome mock with a shared 16-mer and private flanks.
+`mock_cfa()` is the bubble: 4 nodes, 5 edges, 2 samples, labels `genome_001`, `genome_002`, and `unclassified`, one multi-colour node (`n000002`), and two multi-colour edges (`e000002`, `e000005`). `chain_cfa()` is the compaction mock. `synthetic_genomes()` is the two-genome metagenome mock with a shared 16-mer and private flanks.

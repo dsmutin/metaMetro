@@ -82,7 +82,7 @@ Other registered colourings write other namespaces and are not a breaking change
 
 `paint_namespace` allocates fresh colour ids so stacked namespaces do not collide. `filter_colours` keeps a subset of ids or namespaces.
 
-The bubble mock has a node coloured `{0}`, a node coloured `{0,1}`, and a node coloured `{1}`, plus an edge coloured `{0,1}`.
+The bubble mock has two nodes coloured `{0}`, a node coloured `{0,1}`, and a node coloured `{1}`, plus two edges coloured `{0,1}`.
 
 Breaking: changing colour-set semantics, or a colouring pass that edits topology. New namespaces are non-breaking.
 
