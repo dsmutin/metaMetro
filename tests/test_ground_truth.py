@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from metametro.bench import load_bench_cgt, load_bench_gold, load_bench_gold_cgt
+from metametro.bench import load_bench_cfa, load_bench_cgt, load_bench_gold, load_bench_gold_cgt
 from metametro.bench.build import build
 from metametro.bench.data.universal.bubbles import strain_bubble
 from metametro.bench.leakage import assert_no_target_leak
@@ -67,3 +67,11 @@ def test_gold_labels_available_from_ground_truth(tmp_path: Path) -> None:
     assert labels.edge_colors.shape == (cgt.edge_colors.shape[0], 2)
     assert labels.node_features.shape[1] == 0
     assert labels.node_colors.sum(axis=0).tolist() == [3, 3]
+
+
+def test_requesting_taxon_as_colour_fails(tmp_path: Path) -> None:
+    """Asking a bench loader for the gold ``taxon`` namespace is an error, not an empty layer."""
+    result = build("bubble_strain_2", outdir=tmp_path / "out")
+    for loader in (load_bench_cfa, load_bench_cgt):
+        with pytest.raises(ContractError, match="load_bench_gold"):
+            loader(result.outdir, namespaces=["taxon"])

@@ -12,6 +12,7 @@ from typing import Sequence
 from metametro.bench.colourings import colouring_namespace
 from metametro.bench.features import DEFAULT_K, node_feature_layer
 from metametro.contracts.colour_filter import filter_colours
+from metametro.contracts.colouring import GOLD_NAMESPACES
 from metametro.converters.cdbg_to_cgt import cdbg_to_cgt
 from metametro.errors import ContractError
 from metametro.formats.cdbg.io import load_cdbg
@@ -45,8 +46,18 @@ def namespaces_for(colourings: Sequence[str]) -> list[str]:
     return found
 
 
+def _reject_gold(namespaces: Sequence[str] | None) -> None:
+    """Fail loudly instead of returning an uncoloured graph for gold ``taxon``."""
+    gold = sorted({str(name) for name in namespaces or []} & GOLD_NAMESPACES)
+    if gold:
+        raise ContractError(
+            [f"{name} is gold ground truth, not a colour namespace; read it with load_bench_gold" for name in gold]
+        )
+
+
 def load_bench_cfa(outdir: Path, *, namespaces: Sequence[str] | None = None) -> CfaGraph:
     """Load the CFA from a ``benchbuild`` directory and optionally filter colours."""
+    _reject_gold(namespaces)
     graph = load_cfa(Path(outdir) / "cfa")
     if namespaces:
         graph = filter_colours(graph, namespaces=namespaces)
@@ -55,6 +66,7 @@ def load_bench_cfa(outdir: Path, *, namespaces: Sequence[str] | None = None) -> 
 
 def load_bench_cdbg(outdir: Path, *, namespaces: Sequence[str] | None = None) -> Cdbg:
     """Load the CDBG (ToCUMG) and keep the named colour namespaces."""
+    _reject_gold(namespaces)
     graph = load_cdbg(Path(outdir) / "cdbg")
     if namespaces:
         graph = filter_colours(graph, namespaces=namespaces)
