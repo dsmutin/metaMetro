@@ -71,7 +71,7 @@ Schema files live next to each format (`formats/*/schema.yaml`) and pin schema 1
 
 Mandatory pytest covers, for each format: a valid object, a missing field, a bad dtype, a duplicate id, a dangling endpoint, and a bad schema version. Conversion tests cover the bubble round trip, the chain compaction counts, colour union, feature alignment, CSR edge order, determinism, and the genome → DS id chain on the synthetic metagenome. `tests/test_identity.py` checks dense-id lineage, internal CFA edge ids, permuted CSR edge features, labels, and colours, and the on-disk CDBG fixtures against the compactor. `tests/test_cgt_ml.py` checks the feature registry, label separation, prediction joins, CSC, sequence lookup, and loading a CGT directory that has no registry. `tests/test_cdbg_annotations.py` checks CFA transfer, compaction survival for node, internal-edge, and link annotations, namespaces, scalar and vector values, categories, explicit aggregation, provenance, the sidecar round trip, CGT alignment, missing targets, bad dtypes, and refused overwrites.
 
-`pytest -m optional` builds a PyG `Data` object when `torch_geometric` is installed and skips otherwise.
+`pytest -m optional` builds a PyG `Data` object when `torch_geometric` is installed, and compares the strain bubble with BubbleBlower's when a BubbleBlower checkout is beside the MetaMetro checkout. Each test skips otherwise.
 
 `examples/mock_pipeline/run.py` trains the NumPy model on the bubble for a few epochs and checks that four predictions come back.
 

@@ -8,8 +8,18 @@ English is required for every public function, class, module, CLI flag, data fil
 
 ```
 CLI (metametro.cli)
-  → baseline pipeline (metametro.baseline.run_pipeline)
+  metametro benchbuild NAME  → metametro.bench.cli → metametro.bench.build
+      → data/bench/{name}/{assembler}/{properties}/  (cfa/, cdbg/, cgt/, ground_truth/, manifest.yaml, identity.sha256)
+  metametro (no subcommand)  → placeholder baseline (metametro.baseline.run_pipeline)
       → JSON result {status, ok, input_path}
+
+src/metametro/
+  formats/        CFA, CDBG, CGT: models, loaders, dumpers, validators, schema.yaml
+  converters/     CFA → CDBG → CGT, CDBG → CFA, CSR → CGT, CGT → PyG
+  contracts/      stage code: simulation and assembly, colouring, classifiers, DS, external commands, CONTRACTS
+  bench/          benchmark registry, build, colourings, leakage guard, loaders, scoring
+  viz/            CFA colouring and graph-state plots
+  edits.py, identity.py, fixtures.py, states.py, digraph_cfa.py, transit_*.py
 
 tests/          mandatory vs optional pytest
 examples/toy/   end-to-end run of the current (baseline) tool
