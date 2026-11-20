@@ -126,3 +126,38 @@ def test_read_accession_is_explicit(tmp_path: Path) -> None:
     assert "sample" in namespaces
     assert "accession" not in namespaces
     assert "strain_A" not in (result.outdir / "cfa" / "colors.tsv").read_text(encoding="utf-8")
+
+
+def test_composition_layer_is_paragvae_fallback_kmeans(tmp_path: Path) -> None:
+    """The ``composition`` layer equals ParaGVAE's fallback k-means on the same CGT.
+
+    Reference from ParaGVAE 0.7.6 (d18a497), copied here without importing paragvae.
+    src/paragvae/study.py:140-142
+        stored = np.asarray(graph.cgt.node_colors)
+        if stored.ndim != 2 or stored.shape[1] == 0:
+            stored = composition_colors(graph.raw_features, n_colors=8, seed=0)
+    src/paragvae/graphs.py:217-219
+        from metametro.contracts.composition import kmeans_onehot
+        return kmeans_onehot(features, n_clusters=n_colors, seed=seed)
+    src/paragvae/completion.py:106 and 114 (a MetaMetro bench CGT)
+        features = np.asarray(cgt.node_features, dtype=np.float32)
+        raw_features=features.copy(),
+    """
+    from metametro.formats.cdbg.io import load_cdbg
+    from metametro.formats.cgt.io import load_cgt
+
+    result = build("bubble_strain_3_n50", outdir=tmp_path / "out")
+    assert "composition_kmeans" in result.colourings
+    cgt = load_cgt(result.outdir / "cgt")
+    raw_features = np.asarray(cgt.node_features, dtype=np.float32).copy()
+    reference = kmeans_onehot(raw_features, n_clusters=8, seed=0)
+    assert reference.shape[1] > 2
+    colours = load_bench_cdbg(result.outdir).colors or []
+    ids = sorted(int(row["color_id"]) for row in colours if row["namespace"] == "composition")
+    values = {int(row["color_id"]): row["value"] for row in colours}
+    assert [values[color_id] for color_id in ids] == [f"cluster_{index}" for index in range(len(ids))]
+    columns = [list(cgt.color_ids).index(color_id) for color_id in ids]
+    layer = np.asarray(cgt.node_colors)[:, columns]
+    assert np.array_equal(layer, reference)
+    cdbg = load_cdbg(result.outdir / "cdbg")
+    assert len(cdbg.unitigs) == reference.shape[0]

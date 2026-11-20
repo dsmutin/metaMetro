@@ -10,8 +10,9 @@ from __future__ import annotations
 import numpy as np
 
 from metametro.contracts.composition import canonical_kmer_index, kmer_vector
+from metametro.converters.cfa_to_cdbg import cfa_to_cdbg
 from metametro.errors import ContractError
-from metametro.formats.cdbg.model import Cdbg
+from metametro.formats.cdbg.model import Cdbg, Unitig
 from metametro.formats.cfa.model import CfaGraph
 
 DEFAULT_K = 4
@@ -56,3 +57,19 @@ def node_feature_layer(cdbg: Cdbg, cfa: CfaGraph, *, k: int = DEFAULT_K) -> tupl
             np.concatenate(parts).astype(np.float32) if parts else np.zeros(0, dtype=np.float32)
         )
     return rows, names
+
+
+def node_feature_matrix(cfa: CfaGraph, *, k: int = DEFAULT_K) -> tuple[list[Unitig], np.ndarray]:
+    """Return unitigs in CGT row order and the CGT ``node_features`` matrix of ``cfa``.
+
+    Rows follow unitig ids sorted as ``cdbg_to_cgt`` sorts them. Compaction
+    does not depend on colours, so the rows are the same before and after
+    other colourings run.
+    """
+    cdbg = cfa_to_cdbg(cfa)
+    rows, names = node_feature_layer(cdbg, cfa, k=k)
+    unitigs = sorted(cdbg.unitigs, key=lambda unitig: unitig.unitig_id)
+    matrix = np.zeros((len(unitigs), len(names)), dtype=np.float32)
+    for index, unitig in enumerate(unitigs):
+        matrix[index] = rows[unitig.unitig_id]
+    return unitigs, matrix

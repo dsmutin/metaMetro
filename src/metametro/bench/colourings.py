@@ -9,7 +9,7 @@ Namespaces:
 
 - ``as_built`` keeps colours already on the graph (taxon, transit, roxel)
 - ``read_depth`` → ``sample``
-- ``composition_kmeans`` → ``composition``
+- ``composition_kmeans`` → ``composition`` (k-means of the CGT node features)
 - ``kraken2`` → ``kraken2``
 - ``kaiju`` → ``kaiju``
 - ``decaying`` → ``decaying``
@@ -29,8 +29,9 @@ from metametro.contracts.classifiers import (
     run_kraken2,
     write_node_fasta,
 )
-from metametro.contracts.colouring import colour_by_read_accessions, colour_by_reads
-from metametro.contracts.composition import colour_by_composition
+from metametro.bench.features import node_feature_matrix
+from metametro.contracts.colouring import colour_by_read_accessions, colour_by_reads, paint_namespace
+from metametro.contracts.composition import kmeans_labels
 from metametro.contracts.decaying import colour_decaying
 from metametro.formats.cfa.model import CfaGraph
 
@@ -178,17 +179,39 @@ def _read_depth(graph: CfaGraph, ctx: BuildContext) -> CfaGraph:
     )
 
 
-def _composition_available(graph: CfaGraph, _ctx: BuildContext) -> bool:
-    return len(graph.nodes) >= 2 and all(graph.sequences.get(row["node_id"], "") for row in graph.nodes)
+def _composition_available(graph: CfaGraph, ctx: BuildContext) -> bool:
+    if len(graph.nodes) < 2 or not all(graph.sequences.get(row["node_id"], "") for row in graph.nodes):
+        return False
+    unitigs, _matrix = node_feature_matrix(graph, k=ctx.composition_k)
+    return len(unitigs) >= 2
 
 
 def _composition(graph: CfaGraph, ctx: BuildContext) -> CfaGraph:
-    return colour_by_composition(
+    """Cluster the CGT node features (k-mer columns and coverage) of each unitig.
+
+    This is ``kmeans_onehot(cgt.node_features, n_clusters, seed)``: label ``i``
+    is ``cluster_i`` and colour ids follow label order, so the ``composition``
+    columns of ``node_colors`` are that one-hot matrix. Every member node of a
+    unitig gets the unitig's cluster; an edge keeps it when both ends share it.
+    """
+    unitigs, matrix = node_feature_matrix(graph, k=ctx.composition_k)
+    labels = kmeans_labels(matrix, ctx.composition_n_clusters, ctx.composition_seed)
+    by_node = {
+        member: f"cluster_{int(label)}" for unitig, label in zip(unitigs, labels) for member in unitig.members
+    }
+    node_values = {row["node_id"]: [by_node[row["node_id"]]] for row in graph.nodes}
+    edge_values: dict[str, list[str]] = {}
+    for row in graph.edges:
+        left = by_node[row["source"]]
+        right = by_node[row["target"]]
+        edge_values[row["edge_id"]] = [left] if left == right else []
+    return paint_namespace(
         graph,
-        k=ctx.composition_k,
-        n_clusters=ctx.composition_n_clusters,
-        seed=ctx.composition_seed,
+        node_values,
+        edge_values,
+        namespace="composition",
         operation=_operation(graph),
+        values=[f"cluster_{index}" for index in range(int(labels.max()) + 1)],
     )
 
 

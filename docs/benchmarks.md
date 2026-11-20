@@ -31,10 +31,12 @@ It is relative to the root of the MetaMetro checkout, not to the current directo
 | `genomes/`, `reads/` | Read benchmarks (`bubble_reads_2`, `synthetic_reads_2`): the simulated genomes and the reads with their metadata |
 | `contract/` | Community and external benchmarks: the accession pin or tool parameters |
 | `work/` | Community and external benchmarks after download and assembly: downloads, assembly, classifier databases and outputs |
-| `manifest.yaml` | Bench name, colourings, identity; on an assembled NCBI community also `tools`, the `--version` line of megahit, kraken2, kaiju, minimap2, and samovar (`absent` when not on `PATH`), also written to `work/commands.log`. Not part of the identity |
+| `manifest.yaml` | Bench name, `colourings` (the colourings applied, in order), identity; on an assembled NCBI community also `tools`, the `--version` line of megahit, kraken2, kaiju, minimap2, and samovar (`absent` when not on `PATH`), also written to `work/commands.log`. Not part of the identity |
 | `identity.sha256` | Digest of sequences, topology, and colour sets |
 
 The CGT carries a feature layer in `node_features.npy`, separate from colours: for each unitig, L2-normalised canonical k-mer counts (`kmer:k4:<kmer>`, 136 columns at the default `k=4`) when every unitig has a sequence, and `coverage`, the mean CFA node coverage of the unitig, when the CFA has a `coverage` column. It adds no colour namespace and does not change `node_colors` or `identity.sha256`. `manifest.yaml` records `features.kmer_k`. `load_bench_cgt(outdir)` rebuilds the same layer; `load_bench_cgt(outdir, features=False)` gives an empty feature matrix.
+
+The `composition` colour layer is computed from this feature matrix. `composition_kmeans` runs `kmeans_onehot(node_features, n_clusters=8, seed=0)` on the CGT rows, one row per unitig. Cluster `i` is the colour value `cluster_i`, and the `composition` colour ids follow cluster order. So the `composition` columns of `node_colors` are that one-hot matrix, the same matrix ParaGVAE used to compute when a CGT had no colours. Every CFA node of a unitig gets the unitig's cluster. An edge gets the cluster when both of its ends have the same one.
 
 Every colouring registered in `metametro.bench.colourings` that can run is applied, including a colouring added after the benchmark was introduced. `--colouring` restricts that set and runs the named colourings in order. It works only for a single benchmark: `--all --colouring` is a parser error. Each one is checked against the graph as coloured so far, and one that cannot run stops the build with an error instead of being skipped. `metametro benchbuild --list-colourings` prints the registry.
 
@@ -42,7 +44,7 @@ Every colouring registered in `metametro.bench.colourings` that can run is appli
 | --- | --- | --- | --- |
 | `as_built` | existing (taxon, sample, route, …) | yes | always; keeps colours already on the graph |
 | `read_depth` | `sample` | yes | reads and integer `k` are on the build |
-| `composition_kmeans` | `composition` | yes | at least two sequenced nodes |
+| `composition_kmeans` | `composition` | yes | every node has a sequence and the graph compacts to at least two unitigs |
 | `kraken2` | `kraken2` | yes | Kraken2 output or `kraken2` plus a database |
 | `kaiju` | `kaiju` | yes | Kaiju output or `kaiju` plus an FM-index |
 | `decaying` | `decaying` | yes | the graph already has colours and edges |

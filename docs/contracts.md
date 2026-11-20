@@ -76,7 +76,7 @@ Other registered colourings write other namespaces and are not a breaking change
 | Colouring | Namespace | Rule |
 | --- | --- | --- |
 | `as_built` | none (keeps existing namespaces) | Keeps the colours already on the graph and paints nothing. |
-| `composition_kmeans` | `composition` | Canonical k-mer k-means on node sequences (default k=4, 8 clusters, seed 0). |
+| `composition_kmeans` | `composition` | k-means of the CGT node features of each unitig: canonical k-mer columns and `coverage` (default k=4, 8 clusters, seed 0). The `composition` columns of `node_colors` equal `kmeans_onehot(node_features, 8, 0)`. `colour_by_composition` is still public and clusters CFA node sequences. |
 | `kraken2` | `kraken2` | Contig taxids from Kraken2. Classifier evidence, not simulation truth. |
 | `kaiju` | `kaiju` | Contig taxids from Kaiju. |
 | `decaying` | `decaying` | Neighbour leakage of existing colour mass (decay 0.5, 4 iterations). A colour is kept when its mass is at least the threshold 0.5 (`decay_threshold` in `BuildContext`); otherwise the largest mass is kept when it is positive. |
