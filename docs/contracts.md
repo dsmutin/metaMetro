@@ -84,6 +84,8 @@ Other registered colourings write other namespaces and are not a breaking change
 
 Gold labels are not training colours. `GOLD_NAMESPACES` (`metametro.contracts.colouring`) is `{"taxon"}`. A bench build moves those colours to `ground_truth/taxon_nodes.tsv` and `ground_truth/taxon_edges.tsv` before any colouring runs, and the leakage guard (`assert_no_target_leak`) rejects a built CFA that still has a `taxon` namespace. Asking `load_bench_cfa`, `load_bench_cdbg` or `load_bench_cgt` for `namespaces=["taxon"]` raises `ContractError` instead of returning an uncoloured graph. The same error comes from `filter_colours` when `taxon` has no rows in the colour dictionary. Evaluation reads them with `metametro.bench.load_bench_gold` or `load_bench_gold_cgt` ([benchmarks](benchmarks.md#gold-taxon-labels)).
 
+Gold bubbles are in `ground_truth/bubbles.tsv`: one row per bubble with `bubble_id`, `type`, `strain_ids`, `source_id`, `sink_id`, `branch_ids` (CFA node ids, one comma-separated token per branch, `;` between the nodes of one branch), and `expected_action`. An assembled bench (the phage benches) adds `class` (`inter_species`, `intra_species`, or `unresolved`), `branch_genomes`, and `branch_species`, in branch order. `metametro.bench.load_bench_gold_bubbles(bench_dir)` returns `GoldBubble` rows for both layouts and raises `ContractError` when the file is missing. Like the taxon labels, the file is for scoring only and is never a colour ([benchmarks](benchmarks.md#phage-gold-labels)).
+
 `paint_namespace` allocates fresh colour ids so stacked namespaces do not collide. `filter_colours` keeps a subset of ids or namespaces.
 
 The bubble mock has two nodes coloured `{0}`, a node coloured `{0,1}`, and a node coloured `{1}`, plus two edges coloured `{0,1}`.

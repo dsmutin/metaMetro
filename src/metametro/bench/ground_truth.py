@@ -152,3 +152,49 @@ def load_bench_gold_cgt(outdir: Path, namespace: str = "taxon") -> Cgt:
         values=list(labels.values),
     )
     return cdbg_to_cgt(cfa_to_cdbg(painted), node_feature_names=[], edge_feature_names=[])
+
+
+@dataclass(frozen=True)
+class GoldBubble:
+    """One row of ``ground_truth/bubbles.tsv``.
+
+    ``branches`` holds the CFA node ids of each branch. ``bubble_class`` and
+    ``branch_species`` are empty on benches whose file has no such columns.
+    """
+
+    bubble_id: str
+    type: str
+    strain_ids: tuple[str, ...]
+    source_id: str
+    sink_id: str
+    branches: tuple[tuple[str, ...], ...]
+    expected_action: str
+    bubble_class: str
+    branch_genomes: tuple[str, ...]
+    branch_species: tuple[str, ...]
+
+
+def load_bench_gold_bubbles(outdir: Path) -> tuple[GoldBubble, ...]:
+    """Read ``<outdir>/ground_truth/bubbles.tsv``. Raise ``ContractError`` when it is missing."""
+    path = Path(outdir) / "ground_truth" / "bubbles.tsv"
+    if not path.is_file():
+        raise ContractError([f"no gold bubbles under {path.parent}"])
+    _, rows = read_tsv(path)
+    found = []
+    for row in rows:
+        branches = tuple(tuple(part for part in token.split(";") if part) for token in row["branch_ids"].split(","))
+        found.append(
+            GoldBubble(
+                bubble_id=row["bubble_id"],
+                type=row.get("type", ""),
+                strain_ids=_split(row.get("strain_ids", "")),
+                source_id=row.get("source_id", ""),
+                sink_id=row.get("sink_id", ""),
+                branches=branches,
+                expected_action=row.get("expected_action", ""),
+                bubble_class=row.get("class", ""),
+                branch_genomes=tuple(row["branch_genomes"].split(",")) if "branch_genomes" in row else (),
+                branch_species=tuple(row["branch_species"].split(",")) if "branch_species" in row else (),
+            )
+        )
+    return tuple(found)

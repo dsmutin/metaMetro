@@ -463,6 +463,9 @@ def _external(
         ctx = classifiers.context(colourings, **found)
         made = materialize(graph, destination, ctx)
         write_taxon_values(destination, spec.name)
+        from metametro.bench.bubble_gold import write_phage_bubbles
+
+        write_phage_bubbles(destination)
         _finish_manifest(
             spec,
             destination,
