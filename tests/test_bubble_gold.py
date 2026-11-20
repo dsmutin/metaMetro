@@ -123,3 +123,71 @@ def test_bubble_class_comes_from_the_branch_membership() -> None:
     assert differs["strain_ids"] == "10665,10760"
     [missing] = bubble_rows(cdbg, {"nA": ("10665", "10760")}, genome_of)
     assert missing["class"] == "unresolved" and missing["branch_species"] == "10665;10760,"
+
+
+def _overlapping_bubble(tmp_path: Path) -> Path:
+    """Genomes A = P+X+Q and B = P+Y+Q; CFA nodes overlap by 21 bp, as MEGAHIT's do (k = 22)."""
+    import random
+
+    from metametro.bench.phage_gold import node_membership, overlapped_ends, write_taxon_membership
+    from metametro.converters.cfa_to_cdbg import cfa_to_cdbg
+    from metametro.formats.cdbg.io import dump_cdbg
+    from metametro.formats.cfa.model import CfaGraph
+
+    rng = random.Random(7)
+    P, X, Y, Q = ("".join(rng.choice("ACGT") for _ in range(n)) for n in (40, 30, 30, 40))
+    genomes = {"A": P + X + Q, "B": P + Y + Q}
+    sequences = {"S": P, "a": P[-21:] + X + Q[:21], "b": P[-21:] + Y + Q[:21], "T": Q}
+    edges = [
+        {"edge_id": f"e{i}", "source": s, "target": t, "orientation": "++"}
+        for i, (s, t) in enumerate([("S", "a"), ("S", "b"), ("a", "T"), ("b", "T")])
+    ]
+    graph = CfaGraph(
+        metadata={
+            "schema_version": "1.0",
+            "graph_id": "toy",
+            "graph_type": "de_bruijn",
+            "k": 22,
+            "features": {"edge": {"orientation": "orientation"}},
+        },
+        sequences=sequences,
+        nodes=[{"node_id": name} for name in sequences],
+        edges=edges,
+        node_header=["node_id"],
+        edge_header=["edge_id", "source", "target", "orientation"],
+    )
+    dump_cdbg(cfa_to_cdbg(graph), tmp_path / "cdbg")
+    write_tsv(
+        tmp_path / "ground_truth" / "taxon_values.tsv",
+        ["taxon", "genome"],
+        [{"taxon": "1", "genome": "A"}, {"taxon": "2", "genome": "B"}],
+    )
+    old = node_membership(sequences, genomes, 21)
+    assert old.members("a") == ("A", "B") and old.members("b") == ("A", "B")
+    new = node_membership(sequences, genomes, 21, ends=overlapped_ends(edges), overlap=21)
+    assert new.members("a") == ("A",) and new.members("b") == ("B",)
+    assert new.interior_positions["a"] == old.positions["a"] - 2
+    assert new.owner("a") == old.owner("a") == "A"
+    write_taxon_membership(tmp_path, new)
+    return tmp_path
+
+
+def test_overlap_kmers_do_not_make_a_branch_a_member_of_its_neighbours_genome(tmp_path: Path) -> None:
+    from metametro.bench.bubble_gold import write_phage_bubbles
+    from metametro.tables import read_tsv
+
+    write_phage_bubbles(_overlapping_bubble(tmp_path))
+    _, rows = read_tsv(tmp_path / "ground_truth" / "bubbles.tsv")
+    assert [(row["class"], row["branch_genomes"], row["expected_action"]) for row in rows] == [
+        ("inter_species", "A,B", "retain")
+    ]
+
+
+def test_a_non_genomic_branch_beside_a_genomic_one_is_an_error() -> None:
+    cdbg = _toy([("S", "A"), ("S", "B"), ("A", "T"), ("B", "T")])
+    [row] = bubble_rows(cdbg, {"nA": ("10665",)}, {"10665": "T4"}, informative={"nA", "nB"})
+    assert (row["class"], row["type"], row["expected_action"]) == ("error", "error", "pop")
+    [row] = bubble_rows(cdbg, {"nA": ("10665",)}, {"10665": "T4"}, informative={"nA"})
+    assert row["class"] == "unresolved"
+    [row] = bubble_rows(cdbg, {}, {}, informative={"nA", "nB"})
+    assert row["class"] == "unresolved"

@@ -54,7 +54,11 @@ def phage_build(monkeypatch: pytest.MonkeyPatch) -> dict[str, list]:
     monkeypatch.setattr(
         "metametro.bench.phage_gold.phage_membership",
         lambda graph, *_args: Membership(
-            genomes=("T4",), positions={"n1": 6, "n2": 6}, counts={"n1": (6,), "n2": (0,)}
+            genomes=("T4",),
+            positions={"n1": 6, "n2": 6},
+            counts={"n1": (6,), "n2": (0,)},
+            interior_positions={"n1": 5, "n2": 5},
+            interior={"n1": (5,), "n2": (0,)},
         ),
     )
     monkeypatch.setattr("metametro.bench.kraken_pin.checked_kraken_pin", pin)
@@ -118,9 +122,9 @@ def test_phage_build_writes_taxon_values_and_bubbles_before_identity_and_manifes
     assert seen == [(True, True, False, False)]
     assert result.status == "built" and (outdir / "identity.sha256").is_file()
     assert (outdir / "ground_truth" / "taxon_membership.tsv").read_text().splitlines() == [
-        "node_id\tkmers\tT4\tT4_fraction",
-        "n1\t6\t1\t1.000000",
-        "n2\t6\t0\t0.000000",
+        "node_id\tkmers\tinterior_kmers\tT4\tT4_fraction",
+        "n1\t6\t5\t1\t1.000000",
+        "n2\t6\t5\t0\t0.000000",
     ]
     manifest = read_yaml(outdir / "manifest.yaml")
     assert manifest["gold_sha256"] == gold_digest(outdir)

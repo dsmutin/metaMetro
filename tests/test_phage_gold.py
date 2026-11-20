@@ -111,8 +111,8 @@ def test_membership_file_round_trip(tmp_path) -> None:
     membership = node_membership({"n1": "CCCCGGGG", "n2": "AAAACC"}, {"T7": "AAAACCCCGGGG", "T3": "CCCCGGGGTATA"}, 4)
     path = write_taxon_membership(tmp_path, membership)
     assert path.read_text().splitlines() == [
-        "node_id\tkmers\tT3\tT3_fraction\tT7\tT7_fraction",
-        "n1\t5\t1\t1.000000\t1\t1.000000",
-        "n2\t3\t0\t0.000000\t1\t1.000000",
+        "node_id\tkmers\tinterior_kmers\tT3\tT3_fraction\tT7\tT7_fraction",
+        "n1\t5\t5\t1\t1.000000\t1\t1.000000",
+        "n2\t3\t3\t0\t0.000000\t1\t1.000000",
     ]
     assert read_taxon_membership(tmp_path) == {"n1": ("T3", "T7"), "n2": ("T7",)}
