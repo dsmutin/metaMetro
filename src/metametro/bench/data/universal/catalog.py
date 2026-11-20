@@ -196,14 +196,11 @@ def write_external_contract(spec: BenchSpec, outdir: Path) -> None:
         "k": spec.k,
     }
     if spec.name.startswith("phage_species_5"):
-        payload["genomes"] = ["T1", "T3", "T4", "T5", "T7"]
-        payload["accessions"] = [
-            "NC_005833.1",
-            "NC_003298.1",
-            "NC_000866.4",
-            "NC_005859.1",
-            "NC_001604.1",
-        ]
+        from metametro.bench.genomes import pinned_genomes
+
+        pinned = pinned_genomes(spec.name)
+        payload["genomes"] = [genome.name for genome in pinned]
+        payload["accessions"] = [genome.accession for genome in pinned]
         payload["genome_dir"] = "data/raw/genomes"
     if spec.name == "roxel":
         payload["source"] = "sfnetworks::as_sfnetwork(sfnetworks::roxel)"

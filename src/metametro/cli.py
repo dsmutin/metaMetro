@@ -11,16 +11,20 @@ from metametro.baseline import run_pipeline
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Parse CLI arguments and run the baseline pipeline or ``benchbuild``."""
+    """Parse CLI arguments and run the baseline pipeline, ``benchbuild``, or ``benchfetch``."""
     args_in = list(sys.argv[1:] if argv is None else argv)
     if args_in and args_in[0] == "benchbuild":
         from metametro.bench.cli import main as benchbuild_main
 
         return benchbuild_main(args_in[1:])
+    if args_in and args_in[0] == "benchfetch":
+        from metametro.bench.fetch_cli import main as benchfetch_main
+
+        return benchfetch_main(args_in[1:])
     parser = argparse.ArgumentParser(
         prog="metametro",
         description="Metagenomic assembly totally coloured graph representations",
-        epilog="Subcommands: benchbuild (see `metametro benchbuild --help`)",
+        epilog="Subcommands: benchbuild, benchfetch (see `metametro <subcommand> --help`)",
     )
     parser.add_argument("--version", action="store_true", help="print version and exit")
     parser.add_argument("-o", "--output", default="-", help="output path or - for stdout")

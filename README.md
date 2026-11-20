@@ -97,6 +97,8 @@ metametro benchbuild --list
 metametro benchbuild --list-colourings
 metametro benchbuild --all
 metametro benchbuild bubble_strain_2
+metametro benchfetch phage_10      # pinned T1, T3, T4, T5, T7 into data/raw/genomes
+metametro benchbuild phage_10
 ```
 
 ## Tests
@@ -106,7 +108,7 @@ pytest -m mandatory    # every commit
 pytest                 # mandatory and optional
 ```
 
-The mandatory marker selects 183 tests. Two further tests are marked optional: one runs when PyTorch Geometric is installed, and one when a BubbleBlower checkout is beside the MetaMetro checkout. Genome-binning AMBER scores call `amber.py` from [CAMI-challenge/AMBER](https://github.com/CAMI-challenge/AMBER) tag `v2.0.17-beta`. Set `AMBER_SRC` to that checkout.
+The mandatory marker selects 191 tests. Three further tests are marked optional: one runs when PyTorch Geometric is installed, one when a BubbleBlower checkout is beside the MetaMetro checkout, and one downloads the pinned phage genomes from NCBI. Genome-binning AMBER scores call `amber.py` from [CAMI-challenge/AMBER](https://github.com/CAMI-challenge/AMBER) tag `v2.0.17-beta`. Set `AMBER_SRC` to that checkout.
 
 ## License
 

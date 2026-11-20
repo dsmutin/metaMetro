@@ -37,6 +37,7 @@ from metametro.converters.cfa_to_cdbg import cfa_to_cdbg
 from metametro.formats.cfa.io import dump_cfa
 from metametro.formats.cdbg.io import dump_cdbg
 from metametro.formats.cgt.io import dump_cgt
+from metametro.formats.cgt.registry import build_feature_registry
 from metametro.tables import write_tsv
 
 _COMPLEMENT = str.maketrans("ACGTN", "TGCAN")
@@ -142,7 +143,7 @@ def main() -> int:
     if not args.skip_assemble:
         if asm_dir.exists():
             raise SystemExit(f"refusing to reuse {asm_dir}; delete it or pass --skip-assemble")
-        run_command(megahit_command(reads_path, asm_dir, k=args.k, megahit=args.megahit, min_count=2))
+        run_command(megahit_command(reads_path, asm_dir, k=args.k, threads=1, megahit=args.megahit, min_count=2))
     intermediate = asm_dir / "intermediate_contigs" / f"k{args.k}.contigs.fa"
     if not intermediate.is_file():
         raise SystemExit(f"missing MEGAHIT intermediate graph: {intermediate}")
@@ -185,6 +186,9 @@ def main() -> int:
     degree = np.diff(cgt.indptr).astype(np.float32).reshape(-1, 1)
     cgt.node_features = degree
     cgt.metadata["node_feature_names"] = ["out_degree"]
+    cgt.metadata["node_feature_registry"] = build_feature_registry(
+        ["out_degree"], explicit_count=1, positional=False, annotation_sources=()
+    )
     dump_cgt(cgt, work / "cgt")
     numpy_result = run_ds(cgt, epochs=args.epochs, seed=1, backend="numpy")
     junctions = strand_junction_counts(graph.edges)

@@ -150,3 +150,35 @@ Pinned NCBI communities and external contracts are in the same registry. `metame
 
 There is no ten-species phage benchmark. `phage_10` was the ten-times read budget. Strong100, samovar10, and the prebuilt ONT and Illumina bundles are not in this registry.
 
+The phage build runs MEGAHIT with one thread. With several threads MEGAHIT writes the same contigs in a different order on each run, so the graph identity would change between two builds of the same reads.
+
+### Phage genomes
+
+`phage_species_5` and `phage_species_5_x10` read five RefSeq genomes from `data/raw/genomes/<name>.fna` in the checkout. That directory is gitignored. The pin is `src/metametro/bench/data/pins/phage_species_5/genomes.tsv`. It gives one versioned accession per genome, the NCBI taxid of the record, its species, the length, the SHA-256 of the NCBI FASTA, and the SHA-256 of the file the build reads.
+
+| Name | Accession | Taxid | Organism | Species taxid | Species | Length (bp) |
+| --- | --- | --- | --- | --- | --- | --- |
+| T1 | NC_005833.1 | 2492962 | Escherichia phage T1 | 1921008 | Tunavirus T1 | 48836 |
+| T3 | NC_003298.1 | 10759 | Enterobacteria phage T3 | 2732706 | Teetrevirus T3 | 38208 |
+| T4 | NC_000866.4 | 2681598 | Escherichia phage T4 | 10665 | Tequatrovirus T4 | 168903 |
+| T5 | NC_005859.1 | 2695836 | Escherichia phage T5 | 10726 | Tequintavirus T5 | 121750 |
+| T7 | NC_001604.1 | 10760 | Escherichia phage T7 | 1985738 | Teseptimavirus T7 | 39937 |
+
+Taxids and names are from NCBI nuccore `esummary` and taxonomy `efetch` (2026-11-20). The record taxid has no rank in NCBI taxonomy. The species taxid is its ICTV species.
+
+```bash
+metametro benchfetch phage_10            # download, check SHA-256, write data/raw/genomes/T*.fna
+metametro benchfetch phage_10 --list     # print the pin, no download
+metametro benchfetch phage_10 --genome-dir DIR
+```
+
+`benchfetch` calls NCBI E-utilities `efetch` (`db=nuccore`, `rettype=fasta`) over HTTPS, one request per accession. It writes each record as `>T1` and one upper-case sequence line. Bases other than `ACGTN` become `N`; only T4 has any (IUPAC `M`, `S`, `R` at 1-based 56143, 70346, 135175). A file is written only after its length and SHA-256 match the pin. A file that already matches is kept and reported as `present`, so a second run downloads nothing. A file with another hash stops `benchfetch` until you pass `--force`. In Python the same step is `metametro.bench.genomes.fetch_genomes(name, genome_dir)`.
+
+`metametro benchbuild phage_10` checks the five files before it writes anything. A missing or changed genome raises `ContractError`, for example:
+
+```text
+phage_species_5_x10 is missing pinned genome FASTA under <checkout>/data/raw/genomes: T1 (NC_005833.1), T3 (NC_003298.1), T4 (NC_000866.4), T5 (NC_005859.1), T7 (NC_001604.1); fetch them with: metametro benchfetch phage_species_5_x10
+```
+
+A changed file is listed as `differs from the pinned SHA-256`, and the command gets `--force`. Then the build checks for `samovar`, `megahit`, and `megahit_toolkit` on `PATH`. `phage_species_5_x10` built from these genomes has identity `3d1ce381d23e1bcaca0cb139091c85da01af455315df881475e48070e861dbee` (983 CFA nodes, 1270 edges; SAMOVAR 0.12.150, MEGAHIT 1.2.9).
+
