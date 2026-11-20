@@ -218,7 +218,7 @@ metametro benchfetch phage_10 --genome-dir DIR
 phage_species_5_x10 is missing pinned genome FASTA under <checkout>/data/raw/genomes: T1 (NC_005833.1), T3 (NC_003298.1), T4 (NC_000866.4), T5 (NC_005859.1), T7 (NC_001604.1); fetch them with: metametro benchfetch phage_species_5_x10
 ```
 
-A changed file is listed as `differs from the pinned SHA-256`, and the command gets `--force`. Then the build checks for `samovar`, `megahit`, and `megahit_toolkit` on `PATH`. `phage_species_5_x10` built from these genomes has identity `78121c1b05a5814bfc17ac3b7650ed5223a0f584cfada24e9224b7ba0364564c` (`canonical_identity("phage_10")`) (983 CFA nodes, 1270 edges; SAMOVAR 0.12.150, MEGAHIT 1.2.9; colourings `as_built`, `composition_kmeans`, `kraken2`, `decaying`).
+A changed file is listed as `differs from the pinned SHA-256`, and the command gets `--force`. Then the build checks for `samovar`, `megahit`, and `megahit_toolkit` on `PATH`. `phage_species_5_x10` built from these genomes has identity `78121c1b05a5814bfc17ac3b7650ed5223a0f584cfada24e9224b7ba0364564c` (`canonical_identity("phage_10")`) (the read simulator stack behind it, InSilicoSeq 2.0.1 and the rest of Samovar's Python environment, is pinned in `ci/samovar-env.yml`, which the `phage10-solve` CI job installs) (983 CFA nodes, 1270 edges; SAMOVAR 0.12.150, MEGAHIT 1.2.9; colourings `as_built`, `composition_kmeans`, `kraken2`, `decaying`).
 
 ### Phage gold labels
 

@@ -91,7 +91,9 @@ jobs:
         run: |
           git clone https://github.com/ctlab/samovar.git "$RUNNER_TEMP/samovar"
           git -C "$RUNNER_TEMP/samovar" checkout "$SAMOVAR_COMMIT"
-          conda env create -n samovar -f "$RUNNER_TEMP/samovar/environment.yml"
+          # Pinned on the MetaMetro side: Samovar's environment.yml leaves insilicoseq floating.
+          conda env create -n samovar -f ci/samovar-env.yml
+          conda list -n samovar | grep -E '^(insilicoseq|numpy|pandas|scipy|biopython|pysam|snakemake-minimal|python) ' 
           (cd "$RUNNER_TEMP/samovar" && conda run -n samovar ./install.sh)
           echo "$RUNNER_TEMP/samovar/bin" >> "$GITHUB_PATH"
       - name: Fetch the pinned phage genomes

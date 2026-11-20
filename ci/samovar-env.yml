@@ -1,0 +1,34 @@
+# Samovar's Python pipeline for the phage10-solve CI job, pinned to the versions
+# that produced the canonical phage_10 identity (SAMOVAR 0.12.150 at ctlab/samovar
+# d6bb824). Samovar's own environment.yml leaves these floating, and the reads
+# InSilicoSeq simulates enter the identity byte for byte. The R packages of that
+# file are left out: `samovar generate` does not use them. numpy and pandas came
+# from PyPI in the reference environment, so they are pinned there too.
+name: samovar
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.13.16
+  - pip
+  - cxx-compiler=2.0.0
+  - make=4.4.1
+  - zlib=1.3.2
+  - pigz=2.8
+  - snakemake-minimal=9.27.0
+  - pyyaml=6.0.3
+  - tqdm=4.70.1
+  - requests=2.34.2
+  - matplotlib=3.11.2
+  - seaborn=0.13.2
+  - scikit-learn=1.9.1
+  - altair=6.3.0
+  - ete3=3.1.3
+  - biopython=1.88
+  - insilicoseq=2.0.1
+  - scipy=1.18.1
+  - pysam=0.24.1
+  - joblib=1.6.0
+  - pip:
+      - numpy==2.4.6
+      - pandas==2.3.3
