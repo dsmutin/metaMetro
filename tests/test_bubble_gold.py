@@ -187,6 +187,10 @@ def test_a_non_genomic_branch_beside_a_genomic_one_is_an_error() -> None:
     cdbg = _toy([("S", "A"), ("S", "B"), ("A", "T"), ("B", "T")])
     [row] = bubble_rows(cdbg, {"nA": ("10665",)}, {"10665": "T4"}, informative={"nA", "nB"})
     assert (row["class"], row["type"], row["expected_action"]) == ("error", "error", "pop")
+    assert row["branch_ids"] == "nA,nB" and row["branch_genomes"] == "T4,"
+    [row] = bubble_rows(cdbg, {"nB": ("10665",)}, {"10665": "T4"}, informative={"nA", "nB"})
+    assert row["class"] == "error"
+    assert (row["branch_ids"], row["branch_genomes"], row["branch_species"]) == ("nB,nA", "T4,", "10665,")
     [row] = bubble_rows(cdbg, {"nA": ("10665",)}, {"10665": "T4"}, informative={"nA"})
     assert row["class"] == "unresolved"
     [row] = bubble_rows(cdbg, {}, {}, informative={"nA", "nB"})
@@ -250,3 +254,20 @@ def test_two_error_variants_of_one_locus_are_unresolved_not_intra(tmp_path: Path
     write_phage_bubbles(bench)
     _, rows = read_tsv(bench / "ground_truth" / "bubbles.tsv")
     assert [(row["class"], row["branch_genomes"], row["expected_action"]) for row in rows] == [("unresolved", ",", "")]
+
+
+def test_the_error_branch_is_listed_last_as_bubbleblower_reads_it(tmp_path: Path) -> None:
+    import random
+
+    from metametro.bench.bubble_gold import write_phage_bubbles
+    from metametro.tables import read_tsv
+
+    locus = "".join(random.Random(3).choice("ACGT") for _ in range(30))
+    # "a" is an error variant; "b" is the genome sequence. Sorted branch order would put "a" first.
+    bench = _variant_bubble(tmp_path, {"a": _mutate(locus, 5, 25), "b": locus}, locus)
+    write_phage_bubbles(bench)
+    _, rows = read_tsv(bench / "ground_truth" / "bubbles.tsv")
+    [row] = rows
+    assert (row["class"], row["type"], row["expected_action"]) == ("error", "error", "pop")
+    assert row["branch_ids"] == "b,a"
+    assert row["branch_genomes"] == "G,"

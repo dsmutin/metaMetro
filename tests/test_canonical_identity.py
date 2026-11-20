@@ -34,7 +34,7 @@ def test_stored_identities_match_the_docs() -> None:
     }
     assert stored == _documented()
     assert all(gold for _identity, gold in stored.values())
-    assert canonical_gold("phage_10") == "f1a26ea343963ed25ba33d20413f81fc69176ca3229b2ae815091be3f135db2a"
+    assert canonical_gold("phage_10") == "c80f418585a7082a2f0fb99278566e7b30e77b86f57466d98e69fdf6085b7c44"
     assert canonical_identity("phage_10") == canonical_identity("phage_species_5_x10")
     assert canonical_identity("phage_10") == "78121c1b05a5814bfc17ac3b7650ed5223a0f584cfada24e9224b7ba0364564c"
     assert canonical_identity("roxel") is None and canonical_identity("spb_ground_transit") is None

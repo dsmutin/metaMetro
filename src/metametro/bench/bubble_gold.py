@@ -15,8 +15,8 @@ interior k-mer of the node); bubble classes use the majority of interior
 k-mers instead: a branch comes from a species that holds more than half of
 the branch's interior k-mer positions (the single gold labels on a bench
 without that file). See ``bubble_rows`` for the classes ``inter_species``,
-``intra_species``, ``error`` (a non-genomic branch beside genomic ones), and
-``unresolved``. ``type`` is ``strain`` and ``expected_action``
+``intra_species``, ``error`` (a non-genomic branch beside genomic ones, listed
+last), and ``unresolved``. ``type`` is ``strain`` and ``expected_action``
 ``retain`` for ``inter_species``, ``error`` and ``pop`` for ``error``; otherwise
 ``type`` is the class and ``expected_action`` is empty (the hand-built benches use ``strain``/``error``
 and ``retain``/``pop``). Nested or overlapping bubbles and branches longer than
@@ -168,7 +168,10 @@ def bubble_rows(
     ``informative`` with the majority rule: a branch comes from every species
     that holds more than half of the branch's interior k-mer positions (summed
     over its nodes). It is unknown when it has no interior k-mer, and
-    non-genomic when no species holds more than half.
+    non-genomic when no species holds more than half. In an ``error`` row the
+    genomic branches come first and the non-genomic ones last, as on the
+    hand-built benches (BubbleBlower ``resolution_metrics`` reads the last
+    branch as the error).
     """
     members = {unitig.unitig_id: list(unitig.members) for unitig in cdbg.unitigs}
     rows: list[dict[str, str]] = []
@@ -209,6 +212,11 @@ def bubble_rows(
         else:
             kind = "inter_species"
         action = {"inter_species": "retain", "error": "pop"}.get(kind, "")
+        if kind == "error":
+            order = sorted(range(len(states)), key=lambda index: states[index] == "non_genomic")
+            tokens = [tokens[index] for index in order]
+            labels = [labels[index] for index in order]
+            species_sets = [species_sets[index] for index in order]
         rows.append(
             {
                 "bubble_id": bubble.bubble_id,
