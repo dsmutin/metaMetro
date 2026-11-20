@@ -66,6 +66,23 @@ graph = load_bench_cdbg(bench_dir, namespaces=namespaces_for(("kraken2", "decayi
 
 A column or colour namespace that carries an evaluation target (`truth_taxon_id`, `expected_action`, `genome_abundance`, a `truth` namespace, a gold namespace of the bench) is rejected. Those values stay under `ground_truth/`.
 
+### Canonical identities
+
+`metametro.bench.canonical_identity(name)` returns the `identity.sha256` that a default build (`build(name)`, `colourings=None`, no classifier paths) must produce, or `None` when the identity depends on inputs that are not pinned (`roxel`, `spb_ground_transit`, `phage_species_5`, and the NCBI communities). A legacy alias such as `phage_10` gives the value of its benchmark. The values are stored as `BenchSpec.canonical_identity`; a required test checks that they match this table and rebuilds every in-process benchmark against them.
+
+| Bench | Canonical identity |
+| --- | --- |
+| `bubble_error_1` | `c4232c8cc17dc3c48b52a6f0b006eb841b83e9c2fbe09d31812a87cbee50af3a` |
+| `bubble_nested_2` | `3a8a773fa3ed27252bfb2f50d66736b9e19ee532d95832af523b415f2e8ae2d7` |
+| `bubble_reads_2` | `949fa8a0578a4396d9df20af4c449b4d3c44ed4a7d9e41859d2bc1e3e15b2a41` |
+| `bubble_shared_2` | `254486559f42d4c7a4c5e16b7e3ef1eaf9c99e816450be9ae959862fc6e62969` |
+| `bubble_strain_2` | `a6a805ca1435f8afbf4646107d21b1ecc7f6a433a75bda22e785ade851ef456c` |
+| `bubble_strain_3_n50` | `d9a1db5c2ad772545b39c120cb5906623d2bf5e532d1df1885ae03c3e58c835f` |
+| `mock_bubble` | `cd7a2e150dbb344035066030794be8ef5bef66fbf8e20942d8eccdeaeeced095` |
+| `mock_chain` | `a397fd80a0c2779bc4362da5f79d17ace86527e4bb0b3aa7260c2600ee905377` |
+| `phage_species_5_x10` | `78121c1b05a5814bfc17ac3b7650ed5223a0f584cfada24e9224b7ba0364564c` |
+| `synthetic_reads_2` | `89c2cfbd147852473e31f1e6c46b92e2f41ac15b2d940dc05a47d85c8d245448` |
+
 ### Gold namespaces
 
 Each benchmark declares its gold namespaces in `BenchSpec.gold_namespaces` (default `taxon`). `materialize` removes three forms of gold before any colouring runs: colours in a gold namespace, a node or edge column with a gold namespace's name, and the `label` column when its label dictionary namespace is gold. Colours and labels go to `ground_truth/`; a column is dropped (its values are the colours of the same namespace). `assert_no_target_leak(graph, gold_namespaces=...)`, `load_bench_cfa`, `load_bench_cdbg`, `load_bench_cgt`, and `filter_colours` use the set recorded in `manifest.yaml` (`bench_gold_namespaces(bench_dir)`, which adds `taxon`; an older manifest gives `taxon`). Colours on a synthetic bench come only from observed or generated signals: coverage, reads and their samples, composition, classifier output, and the layers derived from them.
@@ -196,7 +213,7 @@ metametro benchfetch phage_10 --genome-dir DIR
 phage_species_5_x10 is missing pinned genome FASTA under <checkout>/data/raw/genomes: T1 (NC_005833.1), T3 (NC_003298.1), T4 (NC_000866.4), T5 (NC_005859.1), T7 (NC_001604.1); fetch them with: metametro benchfetch phage_species_5_x10
 ```
 
-A changed file is listed as `differs from the pinned SHA-256`, and the command gets `--force`. Then the build checks for `samovar`, `megahit`, and `megahit_toolkit` on `PATH`. `phage_species_5_x10` built from these genomes has identity `78121c1b05a5814bfc17ac3b7650ed5223a0f584cfada24e9224b7ba0364564c` (983 CFA nodes, 1270 edges; SAMOVAR 0.12.150, MEGAHIT 1.2.9; colourings `as_built`, `composition_kmeans`, `kraken2`, `decaying`).
+A changed file is listed as `differs from the pinned SHA-256`, and the command gets `--force`. Then the build checks for `samovar`, `megahit`, and `megahit_toolkit` on `PATH`. `phage_species_5_x10` built from these genomes has identity `78121c1b05a5814bfc17ac3b7650ed5223a0f584cfada24e9224b7ba0364564c` (`canonical_identity("phage_10")`) (983 CFA nodes, 1270 edges; SAMOVAR 0.12.150, MEGAHIT 1.2.9; colourings `as_built`, `composition_kmeans`, `kraken2`, `decaying`).
 
 ### Phage gold labels
 
