@@ -2,15 +2,16 @@
 
 Each stage is a contract. The implementation underneath it is not. Contract versions are independent of the package `VERSION` file and are pinned in `metametro.contracts.CONTRACTS`.
 
-| Contract | Version | Responsibility |
-| --- | --- | --- |
-| 1 genome → metagenome | 1.0 | Biological simulation |
-| 2 metagenome → graph | 1.0 | Graph construction |
-| 3 graph → CFA | 1.0 | Canonical representation |
-| 4 CFA colouring | 1.0 | Colour layers on CFA |
-| 5 CFA → CDBG | 1.0 | Compaction |
-| 6 CDBG → CGT | 1.0 | Tensorization |
-| 7 DS on CGT | 1.0 | Graph analysis |
+| Contract | `CONTRACTS` key | Version | Responsibility |
+| --- | --- | --- | --- |
+| 1 genome → metagenome | `genome_to_metagenome` | 1.0 | Biological simulation |
+| 2 metagenome → graph | `metagenome_to_graph` | 1.0 | Graph construction |
+| 3 graph → CFA | `graph_to_cfa` | 1.0 | Canonical representation |
+| 4 CFA colouring | `colour_cfa` | 1.0 | Colour layers on CFA |
+| 5 CFA → CDBG | `cfa_to_cdbg` | 1.0 | Compaction |
+| 6 CDBG → CGT | `cdbg_to_cgt` | 1.0 | Tensorization |
+| 7 DS on CGT | `ds_on_cgt` | 1.0 | Graph analysis |
+| Colour filter (not a stage) | `filter_colours` | 1.0 | Colour subset on a CFA, CDBG, or CGT; see "Colour filter" below |
 
 Colouring is a CFA operation. Other measurements may be copied onto the CDBG annotation sidecar after compaction; that copy is not part of Contract 5 and does not change topology. CDBG owns compacted topology. CGT owns the dense numeric arrays used at runtime. The sidecar is not a fourth graph format and it is not a CGT matrix. Downstream analysis still sees the CGT API.
 
@@ -74,10 +75,11 @@ Other registered colourings write other namespaces and are not a breaking change
 
 | Colouring | Namespace | Rule |
 | --- | --- | --- |
+| `as_built` | none (keeps existing namespaces) | Keeps the colours already on the graph and paints nothing. |
 | `composition_kmeans` | `composition` | Canonical k-mer k-means on node sequences (default k=4, 8 clusters, seed 0). |
 | `kraken2` | `kraken2` | Contig taxids from Kraken2. Classifier evidence, not simulation truth. |
 | `kaiju` | `kaiju` | Contig taxids from Kaiju. |
-| `decaying` | `decaying` | Neighbour leakage of existing colour mass (decay 0.5, 4 iterations). |
+| `decaying` | `decaying` | Neighbour leakage of existing colour mass (decay 0.5, 4 iterations). A colour is kept when its mass is at least the threshold 0.5 (`decay_threshold` in `BuildContext`); otherwise the largest mass is kept when it is positive. |
 | `read_accession` | `accession` | Read-id accession prefix. Explicit only. |
 
 `paint_namespace` allocates fresh colour ids so stacked namespaces do not collide. `filter_colours` keeps a subset of ids or namespaces.
