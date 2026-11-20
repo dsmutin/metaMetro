@@ -1,0 +1,25 @@
+# Kraken2 output pinned for the phage_species_5_x10 (phage_10) build.
+# The build paints the kraken2 colour layer from nodes.kraken, so it needs
+# neither kraken2 nor the index. input_sha256 is the node FASTA the build
+# writes to work/classifier/nodes.fna; a graph with other node sequences
+# stops the build instead of being painted with calls for another graph.
+bench: phage_species_5_x10
+tool: kraken2
+version: 2.17.2
+package: bioconda kraken2 2.17.2 pl5321h3be2455_0
+index:
+  name: k2_viral_20261022
+  collection: Ben Langmead genome-idx (Kraken 2 / Bracken RefSeq indexes)
+  url: https://genome-idx.s3.amazonaws.com/kraken/k2_viral_20261022.tar.gz
+  date: '2026-10-22'
+  tar_bytes: 589941425
+  tar_sha256: 1532b484559347bed98c686cb6b0671910f971d358c3873ba184d7ae6778cfa4
+command: kraken2 --db k2_viral_20261022 --threads 1 --output nodes.kraken nodes.fna
+input: work/classifier/nodes.fna
+input_sha256: 3b6d88efb06652ed6b167e7d587715cff9fb9449593d64a842d53f6c9a32b6e2
+input_sequences: 983
+output: nodes.kraken
+output_sha256: 4596d7687ef4fce1b49ed614521c4c364a28071ae92868ff374d035c2208b1e0
+classified: 889
+unclassified: 94
+run: '2026-11-20'

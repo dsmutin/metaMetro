@@ -180,9 +180,25 @@ metametro benchfetch phage_10 --genome-dir DIR
 phage_species_5_x10 is missing pinned genome FASTA under <checkout>/data/raw/genomes: T1 (NC_005833.1), T3 (NC_003298.1), T4 (NC_000866.4), T5 (NC_005859.1), T7 (NC_001604.1); fetch them with: metametro benchfetch phage_species_5_x10
 ```
 
-A changed file is listed as `differs from the pinned SHA-256`, and the command gets `--force`. Then the build checks for `samovar`, `megahit`, and `megahit_toolkit` on `PATH`. `phage_species_5_x10` built from these genomes has identity `af194d92c03bf4e5f1611b0fcae356271ad3caa5e26d2282f15e777a4019e17a` (983 CFA nodes, 1270 edges; SAMOVAR 0.12.150, MEGAHIT 1.2.9).
+A changed file is listed as `differs from the pinned SHA-256`, and the command gets `--force`. Then the build checks for `samovar`, `megahit`, and `megahit_toolkit` on `PATH`. `phage_species_5_x10` built from these genomes has identity `78121c1b05a5814bfc17ac3b7650ed5223a0f584cfada24e9224b7ba0364564c` (983 CFA nodes, 1270 edges; SAMOVAR 0.12.150, MEGAHIT 1.2.9; colourings `as_built`, `composition_kmeans`, `kraken2`, `decaying`).
 
 ### Phage gold labels
 
-A phage build writes gold `taxon` labels to `ground_truth/taxon_nodes.tsv` and `taxon_edges.tsv` (`metametro.bench.phage_gold`). A CFA node gets the pinned genome that contains a strict majority of its k-mers (k = 21, both strands), the same rule as the `node_labels` of `scripts/phage_baseline.py`; any other node is empty. The value is that genome's species taxid from `genomes.tsv`. An edge gets the label its two ends share. `ground_truth/taxon_values.tsv` names each value: `taxon`, `rank` (`species`), `name`, `genome`, `accession`, and `record_taxid`. The labels are for scoring only and are not a colour of any graph. On `phage_species_5_x10`, 903 of 983 nodes and 440 of 1270 edges have a label (T4 389, T5 177, T7 163, T3 156, T1 18 nodes). The gold labels are part of the identity, so it changed from `3d1ce381…` to the value above; the CFA, CDBG, and CGT files did not change.
+A phage build writes gold `taxon` labels to `ground_truth/taxon_nodes.tsv` and `taxon_edges.tsv` (`metametro.bench.phage_gold`). A CFA node gets the pinned genome that contains a strict majority of its k-mers (k = 21, both strands), the same rule as the `node_labels` of `scripts/phage_baseline.py`; any other node is empty. The value is that genome's species taxid from `genomes.tsv`. An edge gets the label its two ends share. `ground_truth/taxon_values.tsv` names each value: `taxon`, `rank` (`species`), `name`, `genome`, `accession`, and `record_taxid`. The labels are for scoring only and are not a colour of any graph. On `phage_species_5_x10`, 903 of 983 nodes and 440 of 1270 edges have a label (T4 389, T5 177, T7 163, T3 156, T1 18 nodes). The gold labels are part of the identity: they changed it from `3d1ce381…` to `af194d92…` without changing the CFA, CDBG, or CGT files, and the pinned `kraken2` layer below changed it to the value above.
+
+### Phage Kraken2 layer
+
+`phage_species_5_x10` paints the `kraken2` colour layer from a Kraken2 output pinned in the repository, so the build needs neither `kraken2` nor its index. The pin is `src/metametro/bench/data/pins/phage_species_5_x10/kraken2/`: `nodes.kraken` (Kraken2's per-sequence output for the CFA node FASTA; sequence ids are node ids) and `kraken2.yaml`.
+
+| Field | Value |
+| --- | --- |
+| Kraken2 | 2.17.2 (bioconda `kraken2 2.17.2 pl5321h3be2455_0`) |
+| Index | `k2_viral_20261022` (Ben Langmead genome-idx, RefSeq viral, 2026-10-22) |
+| Index archive SHA-256 | `1532b484559347bed98c686cb6b0671910f971d358c3873ba184d7ae6778cfa4` (589941425 bytes) |
+| Command | `kraken2 --db k2_viral_20261022 --threads 1 --output nodes.kraken nodes.fna` |
+| Input `nodes.fna` SHA-256 | `3b6d88efb06652ed6b167e7d587715cff9fb9449593d64a842d53f6c9a32b6e2` (983 sequences) |
+| Output `nodes.kraken` SHA-256 | `4596d7687ef4fce1b49ed614521c4c364a28071ae92868ff374d035c2208b1e0` |
+| Classified | 889 of 983 nodes (90.4%) |
+
+The build writes the node FASTA to `work/classifier/nodes.fna` and uses the pin only when that file has the pinned SHA-256; otherwise it stops with `ContractError` and asks for `--kraken-db` or `--kraken-output`. A given `--kraken-db` or `--kraken-output` wins over the pin. The layer keeps every taxid with k-mer hits on a node (`parse_kraken2_output`), so 894 of 983 nodes and 548 of 1270 edges carry a `kraken2` colour, 44 taxids in all. Its values are NCBI taxids at the rank Kraken2 called (often the genus or the record taxid), not the gold species taxids; `metametro.bench.kraken_pin.kraken_pin(name)` returns the pinned path and its metadata. `phage_species_5` has no pin.
 
