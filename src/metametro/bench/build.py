@@ -132,6 +132,9 @@ def build_all(
     for spec in list_specs():
         destination = default_outdir(spec, root=root)
         if (destination / "manifest.yaml").is_file() and (destination / "identity.sha256").is_file():
+            from metametro.bench.ground_truth import check_gold_digest
+
+            check_gold_digest(destination)
             results.append(
                 BuildResult(
                     spec=spec,

@@ -168,19 +168,47 @@ def _split(cell: str) -> tuple[str, ...]:
 
 
 def check_gold_digest(outdir: Path) -> None:
-    """Raise ``ContractError`` when ``ground_truth/`` no longer matches ``gold.sha256``.
+    """Raise ``ContractError`` when ``ground_truth/`` is not the gold this bench must have.
 
-    A bench built before ``gold.sha256`` existed has no such file and passes.
+    The files must match ``gold.sha256``. When ``manifest.yaml`` is a built
+    bench with a ``canonical_gold``, ``gold.sha256`` must exist and the digest of the
+    files must equal it, so a stale but self-consistent ``ground_truth/`` from
+    an older MetaMetro is refused. Another bench built before ``gold.sha256``
+    existed has no such file and passes.
     """
-    record = Path(outdir) / "gold.sha256"
+    from metametro.bench.registry import canonical_gold
+    from metametro.tables import read_yaml
+
+    outdir = Path(outdir)
+    record = outdir / "gold.sha256"
+    manifest_path = outdir / "manifest.yaml"
+    manifest = (read_yaml(manifest_path) or {}) if manifest_path.is_file() else {}
+    bench = manifest.get("bench")
+    expected = None
+    if bench and manifest.get("status") == "built":
+        try:
+            expected = canonical_gold(str(bench))
+        except ContractError:
+            expected = None
     if not record.is_file():
+        if expected:
+            raise ContractError(
+                [f"{outdir} has no gold.sha256 but {bench} has a canonical gold digest; rebuild the bench"]
+            )
         return
     written = set(record.read_text(encoding="utf-8").splitlines())
     current = set(gold_digest_lines(outdir))
     if written != current:
         changed = sorted({line.split("  ", 1)[1] for line in written ^ current})
         raise ContractError(
-            [f"{Path(outdir)} ground_truth/ does not match gold.sha256 ({', '.join(changed)}); rebuild the bench"]
+            [f"{outdir} ground_truth/ does not match gold.sha256 ({', '.join(changed)}); rebuild the bench"]
+        )
+    if expected and gold_digest(outdir) != expected:
+        raise ContractError(
+            [
+                f"{outdir} gold digest {gold_digest(outdir)} is not the canonical {bench} gold {expected}; "
+                "the ground truth is from another MetaMetro version, rebuild the bench"
+            ]
         )
 
 
