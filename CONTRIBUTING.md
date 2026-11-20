@@ -91,6 +91,8 @@ Never `git push` unless the human explicitly asks. CI runs on GitHub after they 
 
 New benchmarks are added in this repository, under `src/metametro/bench/`, and reviewed as a pull request. Do not start a second benchmark tree in a downstream tool.
 
+When the owner allows it for a task, a benchmark change may go straight to `main` without a pull request. Then the mandatory tests (`pytest -m mandatory`) must pass before the push, and the second reviewer reviews the pushed commits before the task is closed.
+
 Do not hard-code a machine path (`/mnt`, `/nfs`, `/home`, or a drive letter). A benchmark input is the `benchbuild` output directory, a CLI argument, or an environment variable. If it is missing, stop.
 
 Do not mock a benchmark graph, a taxonomy label, or a metric. A tiny graph written inside a test may stay in that test. A benchmark comes from `metametro benchbuild`.
