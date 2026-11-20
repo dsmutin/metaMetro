@@ -57,6 +57,8 @@ Starting value: `0.0.1`.
 | Fix or update of an existing feature | **patch** (`0.1.0` → `0.1.1`) |
 | Release | **major** (`0.1.1` → `1.0.0`) |
 
+A major bump is made only by the owner's decision, and only for an incompatible change of a contract (`docs/contracts.md`, a file format, or a public function's behaviour that downstream tools rely on). An agent or contributor never makes one on their own; a breaking change is proposed first and waits for that decision.
+
 Every version bump is its own commit, and that commit gets an annotated tag `vX.Y.Z` with the message `MetaMetro X.Y.Z`, matching `VERSION`. Push the tag together with the commit. Never move, rewrite, or delete a pushed tag; a mistake is fixed by the next version. Downstream packages pin a tag, not a branch.
 
 ## Install (conda only)
