@@ -7,7 +7,7 @@ A node is one named stop. Feed ids that share a name and lie within 60 m are mer
 
 Coverage is simulated, not taken from the feed. Each route draws one value from a normal distribution with mean equal to its number of stops and standard deviation equal to the square root of that number (seed 0). Negative draws are set to 0. The value is added at every stop the route serves, so a node is the sum of its routes. An edge is the mean of its two stops. The feed does not publish passenger counts.
 
-Colours use two namespaces: `transport_type` (`bus`, `trolley`, `tram`) and `route` (`bus:193`, and the route id as well when that label is shared). Each stop and each hop carries every colour that applies.
+The script's CFA colours use two namespaces: `transport_type` (`bus`, `trolley`, `tram`) and `route` (`bus:193`, and the route id as well when that label is shared). Each stop and each hop carries every colour that applies. These are the bench's gold namespaces: `metametro benchbuild spb_ground_transit` moves them to `ground_truth/` and they are not colours of the bench graphs. Read them with `load_bench_gold(bench_dir, "transport_type")` or `load_bench_states`.
 
 ## Run
 

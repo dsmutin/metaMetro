@@ -12,7 +12,7 @@ from pathlib import Path
 from metametro.bench.leakage import assert_no_target_leak
 from metametro.bench.paths import default_outdir
 from metametro.bench.registry import list_specs
-from metametro.bench.select import load_bench_cdbg, load_bench_cgt, namespaces_for
+from metametro.bench.select import bench_gold_namespaces, load_bench_cdbg, load_bench_cgt, namespaces_for
 from metametro.errors import ContractError
 from metametro.formats.cdbg.io import load_cdbg
 from metametro.formats.cfa.io import load_cfa
@@ -46,7 +46,7 @@ def check_bench_directory(outdir: Path) -> str:
     cfa = load_cfa(path / "cfa")
     cdbg = load_cdbg(path / "cdbg")
     cgt = load_cgt(path / "cgt")
-    assert_no_target_leak(cfa)
+    assert_no_target_leak(cfa, gold_namespaces=bench_gold_namespaces(path))
     if cgt.num_nodes != len(cdbg.unitigs):
         raise ContractError(
             [f"{path} CGT has {cgt.num_nodes} nodes and CDBG has {len(cdbg.unitigs)} unitigs"]

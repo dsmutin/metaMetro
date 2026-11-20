@@ -7,16 +7,22 @@ are derived from colour namespaces. They are targets, not input features.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 
+from metametro.contracts.colouring import paint_namespace
 from metametro.converters.cdbg_to_cgt import cdbg_to_cgt
 from metametro.converters.cfa_to_cdbg import cfa_to_cdbg
 from metametro.errors import ContractError
 from metametro.formats.cdbg.model import Cdbg
 from metametro.formats.cfa.model import CfaGraph
 from metametro.formats.cgt.model import Cgt
+
+if TYPE_CHECKING:
+    from metametro.bench.ground_truth import GoldLabels
 
 
 @dataclass
@@ -40,6 +46,7 @@ def build_geometric_states(
     *,
     node_namespace: str,
     edge_namespaces: tuple[str, ...],
+    gold: Mapping[str, GoldLabels] | None = None,
 ) -> GeometricStates:
     """Compact ``cfa`` and attach geometry plus colour targets.
 
@@ -50,16 +57,24 @@ def build_geometric_states(
     colours takes the majority value of that namespace on its incident links.
     A remaining unitig is ``Unclassified``. Each edge column is one colour in
     ``edge_namespaces``.
+
+    ``gold`` maps namespaces to bench gold labels (``load_bench_gold``). A
+    target namespace found there is read from the gold labels instead of the
+    CFA colours. The gold labels decide only ``node_labels``,
+    ``node_class_names``, and ``edge_targets``; the returned CDBG and CGT carry
+    the CFA colours alone, so gold never becomes a colour.
     """
     if not edge_namespaces:
         raise ContractError(["edge label namespaces are required"])
+    targets_from = _with_gold(cfa, (node_namespace, *edge_namespaces), gold)
     longitudes, latitudes = _coordinates(cfa)
     coverage = _optional_float(cfa.nodes, "coverage", "node_id", "node")
     edge_coverage = _optional_float(cfa.edges, "coverage", "edge_id", "edge")
     cdbg = cfa_to_cdbg(cfa)
-    if not cdbg.colors:
+    target_cdbg = cdbg if targets_from is cfa else cfa_to_cdbg(targets_from)
+    if not target_cdbg.colors:
         raise ContractError(["CFA has no colours to turn into labels"])
-    palette = {int(row["color_id"]): row for row in cdbg.colors}
+    palette = {int(row["color_id"]): row for row in target_cdbg.colors}
     _require_namespaces(palette, (node_namespace, *edge_namespaces))
 
     node_features: dict[str, np.ndarray] = {}
@@ -87,8 +102,13 @@ def build_geometric_states(
         node_feature_names=node_names,
         edge_feature_names=edge_names,
     )
+    target_cgt = cgt if target_cdbg is cdbg else cdbg_to_cgt(
+        target_cdbg, node_feature_names=[], edge_feature_names=[]
+    )
+    if target_cgt.num_nodes != cgt.num_nodes or not np.array_equal(target_cgt.indices, cgt.indices):
+        raise ContractError(["gold labels changed the compacted graph"])
     names, labels, edge_names_out, targets = _targets(
-        cgt,
+        target_cgt,
         palette,
         node_namespace=node_namespace,
         edge_namespaces=edge_namespaces,
@@ -104,6 +124,29 @@ def build_geometric_states(
         edge_label_names=edge_names_out,
         edge_targets=targets,
     )
+
+
+def _with_gold(
+    cfa: CfaGraph, namespaces: tuple[str, ...], gold: Mapping[str, GoldLabels] | None
+) -> CfaGraph:
+    """Return ``cfa`` with the requested gold namespaces painted on, for targets only."""
+    if not gold:
+        return cfa
+    present = {str(row.get("namespace")) for row in cfa.colors or []}
+    painted = cfa
+    for name in dict.fromkeys(namespaces):
+        if name in present or name not in gold:
+            continue
+        labels = gold[name]
+        painted = paint_namespace(
+            painted,
+            {row["node_id"]: list(labels.nodes.get(row["node_id"], ())) for row in painted.nodes},
+            {row["edge_id"]: list(labels.edges.get(row["edge_id"], ())) for row in painted.edges},
+            namespace=name,
+            operation="merge",
+            values=list(labels.values),
+        )
+    return painted
 
 
 def _coordinates(cfa: CfaGraph) -> tuple[dict[str, float], dict[str, float]]:

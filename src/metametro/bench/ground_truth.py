@@ -1,11 +1,16 @@
 """Gold labels of a bench, kept out of the graphs a model reads.
 
-A builder may hand ``materialize`` a CFA whose colours include a gold
-namespace (``GOLD_NAMESPACES``, i.e. ``taxon``). Those colours are removed from
-the graph before any colouring runs and written under ``ground_truth/``:
+A builder may hand ``materialize`` a CFA that carries a gold namespace of its
+bench (``BenchSpec.gold_namespaces``; ``GOLD_NAMESPACES``, i.e. ``taxon``, by
+default) as colours, as a column, or as the ``label`` column. That gold is
+removed from the graph before any colouring runs and written under
+``ground_truth/``:
 
 - ``ground_truth/<namespace>_nodes.tsv``: ``node_id``, ``<namespace>``
 - ``ground_truth/<namespace>_edges.tsv``: ``edge_id``, ``source``, ``target``, ``<namespace>``
+- ``ground_truth/<namespace>_values.tsv``: ``<namespace>``, every value of the namespace
+  in colour-dictionary order, also one that labels no node or edge (it may have more
+  columns, as on the phage benches)
 
 One row per CFA node or edge. The label cell is a comma-separated list of gold
 values, empty when the node or edge has none. Evaluation reads them with
@@ -16,6 +21,7 @@ nodes and CSR edges of ``load_bench_cgt``).
 from __future__ import annotations
 
 from copy import deepcopy
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -40,32 +46,73 @@ class GoldLabels:
     edges: dict[str, tuple[str, ...]]
 
 
-def split_gold(graph: CfaGraph) -> tuple[CfaGraph, dict[str, GoldLabels]]:
-    """Return ``graph`` without gold colours, and the gold labels by namespace."""
+def split_gold(
+    graph: CfaGraph, gold_namespaces: Iterable[str] = GOLD_NAMESPACES
+) -> tuple[CfaGraph, dict[str, GoldLabels]]:
+    """Return ``graph`` without gold, and the gold labels by namespace.
+
+    ``gold_namespaces`` is the bench's declared gold set (default
+    ``GOLD_NAMESPACES``). Three forms of gold leave the graph: colours in a gold
+    namespace, a node or edge column named after a gold namespace, and the
+    ``label`` column when its label dictionary namespace is gold. Colours and
+    labels become ``GoldLabels``; a named column is dropped (its values are the
+    colours of the same namespace).
+    """
+    declared = frozenset(str(name) for name in gold_namespaces)
     gold_ids: dict[int, tuple[str, str]] = {}
     for row in graph.colors or []:
         namespace = str(row.get("namespace", ""))
-        if namespace in GOLD_NAMESPACES:
+        if namespace in declared:
             gold_ids[int(row["color_id"])] = (namespace, str(row.get("value") or row["color_id"]))
-    if not gold_ids:
+    label_of: dict[str, tuple[str, str]] = {}
+    for row in graph.labels or []:
+        namespace = str(row.get("namespace", ""))
+        if namespace in declared:
+            label_of[str(row["label_id"])] = (namespace, str(row.get("value") or row["label_id"]))
+    columns = declared & (set(graph.node_header) | set(graph.edge_header))
+    if not gold_ids and not label_of and not columns:
         return graph, {}
     stripped = deepcopy(graph)
-    namespaces = sorted({namespace for namespace, _ in gold_ids.values()})
+    namespaces = sorted({namespace for namespace, _ in (*gold_ids.values(), *label_of.values())})
     nodes: dict[str, dict[str, tuple[str, ...]]] = {name: {} for name in namespaces}
     edges: dict[str, dict[str, tuple[str, ...]]] = {name: {} for name in namespaces}
+    drop_label = bool(label_of)
     for rows, key, out in ((stripped.nodes, "node_id", nodes), (stripped.edges, "edge_id", edges)):
         for row in rows:
             column = "color_set" if "color_set" in row else ("colors" if "colors" in row else None)
             ids = parse_color_set(row.get(column, "")) if column else []
+            label = label_of.get(str(row.get("label", "")).strip()) if drop_label else None
             for name in namespaces:
-                out[name][row[key]] = tuple(gold_ids[i][1] for i in sorted(ids) if i in gold_ids and gold_ids[i][0] == name)
+                found = [gold_ids[i][1] for i in sorted(ids) if i in gold_ids and gold_ids[i][0] == name]
+                if label is not None and label[0] == name and label[1] not in found:
+                    found.append(label[1])
+                out[name][row[key]] = tuple(found)
             if column:
                 row[column] = ",".join(str(i) for i in ids if i not in gold_ids)
+            for name in columns:
+                row.pop(name, None)
+            if drop_label:
+                row.pop("label", None)
+    dropped = set(columns) | ({"label"} if drop_label else set())
+    stripped.node_header = [name for name in stripped.node_header if name not in dropped]
+    stripped.edge_header = [name for name in stripped.edge_header if name not in dropped]
+    features = stripped.metadata.get("features")
+    if isinstance(features, dict):
+        for kind in ("node", "edge"):
+            declared_kind = features.get(kind)
+            if isinstance(declared_kind, dict):
+                features[kind] = {name: value for name, value in declared_kind.items() if name not in dropped}
     stripped.colors = [row for row in graph.colors or [] if int(row["color_id"]) not in gold_ids]
+    if drop_label:
+        stripped.labels = None
     gold = {
         name: GoldLabels(
             namespace=name,
-            values=tuple(sorted({value for namespace, value in gold_ids.values() if namespace == name})),
+            values=tuple(
+                dict.fromkeys(
+                    value for namespace, value in (*gold_ids.values(), *label_of.values()) if namespace == name
+                )
+            ),
             nodes=nodes[name],
             edges=edges[name],
         )
@@ -99,7 +146,9 @@ def write_gold(outdir: Path, gold: dict[str, GoldLabels], graph: CfaGraph) -> li
                 for row in graph.edges
             ],
         )
-        written.extend([node_path, edge_path])
+        value_path = root / f"{name}_values.tsv"
+        write_tsv(value_path, [name], [{name: value} for value in labels.values])
+        written.extend([node_path, edge_path, value_path])
     return written
 
 
@@ -130,7 +179,29 @@ def load_bench_gold(outdir: Path, namespace: str = "taxon") -> GoldLabels:
     nodes = {row["node_id"]: _split(row.get(namespace, "")) for row in node_rows}
     edges = {row["edge_id"]: _split(row.get(namespace, "")) for row in edge_rows}
     values = sorted({value for found in (*nodes.values(), *edges.values()) for value in found})
+    value_path = root / f"{namespace}_values.tsv"
+    if value_path.is_file():
+        _, value_rows = read_tsv(value_path)
+        listed = list(dict.fromkeys(row[namespace] for row in value_rows if row.get(namespace)))
+        values = listed + [value for value in values if value not in set(listed)]
     return GoldLabels(namespace=namespace, values=tuple(values), nodes=nodes, edges=edges)
+
+
+def load_bench_gold_all(outdir: Path) -> dict[str, GoldLabels]:
+    """Every gold namespace of a bench that has labels under ``ground_truth/``.
+
+    The namespaces are those declared in ``manifest.yaml`` (``gold_namespaces``),
+    or ``taxon`` for an older manifest. A declared namespace without files is
+    left out, so a bench with no gold gives an empty mapping.
+    """
+    from metametro.bench.select import bench_gold_namespaces
+
+    found: dict[str, GoldLabels] = {}
+    root = Path(outdir) / "ground_truth"
+    for name in sorted(bench_gold_namespaces(outdir)):
+        if (root / f"{name}_nodes.tsv").is_file() and (root / f"{name}_edges.tsv").is_file():
+            found[name] = load_bench_gold(outdir, name)
+    return found
 
 
 def load_bench_gold_cgt(outdir: Path, namespace: str = "taxon") -> Cgt:

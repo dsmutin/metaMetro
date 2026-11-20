@@ -28,8 +28,9 @@ def namespaces_for(colourings: Sequence[str]) -> list[str]:
 
     ``as_built`` has no single namespace and is skipped here. Select those
     colours by naming the namespaces that the builder already wrote
-    (``sample``, ``transport_type``, ``route``, ...). Gold ``taxon`` is not a
-    colour namespace of a built graph; read it with ``load_bench_gold``.
+    (``sample``, ``composition``, ...). A bench's gold namespaces (``taxon``;
+    ``transport_type`` and ``route`` on spb) are not colour namespaces of a
+    built graph; read them with ``load_bench_gold``.
     """
     found: list[str] = []
     missing: list[str] = []
@@ -46,30 +47,43 @@ def namespaces_for(colourings: Sequence[str]) -> list[str]:
     return found
 
 
-def _reject_gold(namespaces: Sequence[str] | None) -> None:
-    """Fail loudly instead of returning an uncoloured graph for gold ``taxon``."""
-    gold = sorted({str(name) for name in namespaces or []} & GOLD_NAMESPACES)
+def bench_gold_namespaces(outdir: Path) -> frozenset[str]:
+    """Gold namespaces declared in ``manifest.yaml``, plus ``GOLD_NAMESPACES``.
+
+    A directory without a manifest, or a manifest written before benches
+    declared their gold, gives ``GOLD_NAMESPACES``.
+    """
+    path = Path(outdir) / "manifest.yaml"
+    declared = read_yaml(path).get("gold_namespaces") if path.is_file() else None
+    return GOLD_NAMESPACES | frozenset(str(name) for name in declared or [])
+
+
+def _reject_gold(outdir: Path, namespaces: Sequence[str] | None) -> frozenset[str]:
+    """Fail loudly instead of returning an uncoloured graph for a gold namespace."""
+    declared = bench_gold_namespaces(outdir)
+    gold = sorted({str(name) for name in namespaces or []} & declared)
     if gold:
         raise ContractError(
             [f"{name} is gold ground truth, not a colour namespace; read it with load_bench_gold" for name in gold]
         )
+    return declared
 
 
 def load_bench_cfa(outdir: Path, *, namespaces: Sequence[str] | None = None) -> CfaGraph:
     """Load the CFA from a ``benchbuild`` directory and optionally filter colours."""
-    _reject_gold(namespaces)
+    declared = _reject_gold(outdir, namespaces)
     graph = load_cfa(Path(outdir) / "cfa")
     if namespaces:
-        graph = filter_colours(graph, namespaces=namespaces)
+        graph = filter_colours(graph, namespaces=namespaces, gold_namespaces=declared)
     return graph
 
 
 def load_bench_cdbg(outdir: Path, *, namespaces: Sequence[str] | None = None) -> Cdbg:
     """Load the CDBG (ToCUMG) and keep the named colour namespaces."""
-    _reject_gold(namespaces)
+    declared = _reject_gold(outdir, namespaces)
     graph = load_cdbg(Path(outdir) / "cdbg")
     if namespaces:
-        graph = filter_colours(graph, namespaces=namespaces)
+        graph = filter_colours(graph, namespaces=namespaces, gold_namespaces=declared)
     return graph
 
 
@@ -99,4 +113,22 @@ def load_bench_cgt(
         node_features=node_features if node_names else None,
         node_feature_names=node_names,
         edge_feature_names=[],
+    )
+
+
+def load_bench_states(outdir: Path, *, node_namespace: str, edge_namespaces: tuple[str, ...]):
+    """``build_geometric_states`` on a bench CFA, with targets read from its gold.
+
+    The node classes (``node_labels``, ``node_class_names``) and edge targets of
+    a gold namespace come from ``ground_truth/``; the returned CDBG and CGT carry
+    only the bench's colours. Requires longitude and latitude columns (spb, roxel).
+    """
+    from metametro.bench.ground_truth import load_bench_gold_all
+    from metametro.states import build_geometric_states
+
+    return build_geometric_states(
+        load_cfa(Path(outdir) / "cfa"),
+        node_namespace=node_namespace,
+        edge_namespaces=tuple(edge_namespaces),
+        gold=load_bench_gold_all(outdir),
     )

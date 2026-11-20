@@ -175,6 +175,7 @@ def _finish_manifest(
         "colourings": list(colourings),
         "identity": identity,
         "scoring": list(spec.scoring),
+        "gold_namespaces": list(spec.gold_namespaces),
     }
     if requested != spec.name:
         manifest["requested_name"] = requested
@@ -198,7 +199,7 @@ def _inprocess(
 ) -> BuildResult:
     ctx = classifiers.context(colourings)
     graph = PREPARE[spec.name](destination, ctx)
-    made: Materialized = materialize(graph, destination, ctx)
+    made: Materialized = materialize(graph, destination, ctx, gold_namespaces=spec.gold_namespaces)
     _finish_manifest(
         spec,
         destination,
@@ -246,7 +247,7 @@ def _community(
 
     tools = pipe.log_tool_versions()
     ctx = _community_context(spec, destination, colourings, classifiers)
-    made = materialize(graph, destination, ctx)
+    made = materialize(graph, destination, ctx, gold_namespaces=spec.gold_namespaces)
     _finish_manifest(
         spec,
         destination,
@@ -461,7 +462,7 @@ def _external(
             if pinned is not None:
                 found["kraken_output"] = pinned
         ctx = classifiers.context(colourings, **found)
-        made = materialize(graph, destination, ctx)
+        made = materialize(graph, destination, ctx, gold_namespaces=spec.gold_namespaces)
         write_taxon_values(destination, spec.name)
         from metametro.bench.bubble_gold import write_phage_bubbles
 
@@ -487,7 +488,7 @@ def _external(
 
         graph = build_roxel_cfa(k=spec.k or 21)
         ctx = classifiers.context(colourings)
-        made = materialize(graph, destination, ctx)
+        made = materialize(graph, destination, ctx, gold_namespaces=spec.gold_namespaces)
         _finish_manifest(
             spec,
             destination,
@@ -518,7 +519,7 @@ def _external(
 
         graph = load_cfa(staged)
         ctx = classifiers.context(colourings)
-        made = materialize(graph, destination, ctx)
+        made = materialize(graph, destination, ctx, gold_namespaces=spec.gold_namespaces)
         _finish_manifest(
             spec,
             destination,

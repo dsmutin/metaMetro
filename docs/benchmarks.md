@@ -27,11 +27,11 @@ It is relative to the root of the MetaMetro checkout, not to the current directo
 | Path | Role |
 | --- | --- |
 | `cfa/`, `cdbg/`, `cgt/` | The three graph structures |
-| `ground_truth/` | Evaluation labels. Not a model input. `mock_bubble` and `mock_chain` have none. On the five hand-built bubble benches and the two phage benches it also holds the gold taxon labels, `taxon_nodes.tsv` and `taxon_edges.tsv` (see below) |
+| `ground_truth/` | Evaluation labels. Not a model input. It holds `<namespace>_nodes.tsv`, `<namespace>_edges.tsv`, and `<namespace>_values.tsv` for each gold namespace of the bench that has labels (see [gold namespaces](#gold-namespaces)): `taxon` on the bubble and phage benches, `genome` on `mock_bubble` and `mock_chain`, `transport_type` and `route` on `spb_ground_transit`, `type` and `name` on `roxel` |
 | `genomes/`, `reads/` | Read benchmarks (`bubble_reads_2`, `synthetic_reads_2`): the simulated genomes and the reads with their metadata |
 | `contract/` | Community and external benchmarks: the accession pin or tool parameters |
 | `work/` | Community and external benchmarks after download and assembly: downloads, assembly, classifier databases and outputs |
-| `manifest.yaml` | Bench name, `colourings` (the colourings applied, in order), identity; on an assembled NCBI community also `tools`, the `--version` line of megahit, kraken2, kaiju, minimap2, and samovar (`absent` when not on `PATH`), also written to `work/commands.log`. Not part of the identity |
+| `manifest.yaml` | Bench name, `colourings` (the colourings applied, in order), `gold_namespaces` (the bench's declared gold set), identity; on an assembled NCBI community also `tools`, the `--version` line of megahit, kraken2, kaiju, minimap2, and samovar (`absent` when not on `PATH`), also written to `work/commands.log`. Not part of the identity |
 | `identity.sha256` | Digest of sequences, topology, colour sets, and the gold labels moved to `ground_truth/` |
 
 The CGT carries a feature layer in `node_features.npy`, separate from colours: for each unitig, L2-normalised canonical k-mer counts (`kmer:k4:<kmer>`, 136 columns at the default `k=4`) when every unitig has a sequence, and `coverage`, the mean CFA node coverage of the unitig, when the CFA has a `coverage` column. It adds no colour namespace and does not change `node_colors` or `identity.sha256`. `manifest.yaml` records `features.kmer_k`. `load_bench_cgt(outdir)` rebuilds the same layer; `load_bench_cgt(outdir, features=False)` gives an empty feature matrix.
@@ -42,7 +42,7 @@ Every colouring registered in `metametro.bench.colourings` that can run is appli
 
 | Colouring | Namespace | Auto | When it runs |
 | --- | --- | --- | --- |
-| `as_built` | existing (sample, route, …) | yes | always; keeps colours already on the graph except gold `taxon`, which is moved to `ground_truth/` first |
+| `as_built` | existing (`sample`, …) | yes | always; keeps colours already on the graph except the bench's gold namespaces, which are moved to `ground_truth/` first |
 | `read_depth` | `sample` | yes | reads and integer `k` are on the build |
 | `composition_kmeans` | `composition` | yes | every node has a sequence and the graph compacts to at least two unitigs |
 | `kraken2` | `kraken2` | yes | Kraken2 output or `kraken2` plus a database |
@@ -64,11 +64,27 @@ graph = load_bench_cdbg(bench_dir, namespaces=namespaces_for(("kraken2", "decayi
 
 `filter_colours(graph, namespace="kraken2")` is the same selection on a CFA, CDBG, or (by `color_ids`) a CGT.
 
-A column or colour namespace that carries an evaluation target (`truth_taxon_id`, `expected_action`, `genome_abundance`, a `truth` namespace, the gold `taxon` namespace) is rejected. Those values stay under `ground_truth/`.
+A column or colour namespace that carries an evaluation target (`truth_taxon_id`, `expected_action`, `genome_abundance`, a `truth` namespace, a gold namespace of the bench) is rejected. Those values stay under `ground_truth/`.
+
+### Gold namespaces
+
+Each benchmark declares its gold namespaces in `BenchSpec.gold_namespaces` (default `taxon`). `materialize` removes three forms of gold before any colouring runs: colours in a gold namespace, a node or edge column with a gold namespace's name, and the `label` column when its label dictionary namespace is gold. Colours and labels go to `ground_truth/`; a column is dropped (its values are the colours of the same namespace). `assert_no_target_leak(graph, gold_namespaces=...)`, `load_bench_cfa`, `load_bench_cdbg`, `load_bench_cgt`, and `filter_colours` use the set recorded in `manifest.yaml` (`bench_gold_namespaces(bench_dir)`, which adds `taxon`; an older manifest gives `taxon`). Colours on a synthetic bench come only from observed or generated signals: coverage, reads and their samples, composition, classifier output, and the layers derived from them.
+
+| Bench | Gold namespaces | Colours left after the build |
+| --- | --- | --- |
+| `bubble_strain_2`, `bubble_error_1`, `bubble_nested_2`, `bubble_shared_2`, `bubble_strain_3_n50` | `taxon` | `composition`, `decaying` |
+| `mock_bubble`, `mock_chain` | `taxon`, `genome` (the CFA `label` column and label dictionary) | `sample`, `composition`, `decaying` |
+| `bubble_reads_2`, `synthetic_reads_2` | `taxon`, `genome`, `accession` (selecting `read_accession` stops the build) | `sample`, `composition`, `decaying` |
+| `phage_species_5`, `phage_species_5_x10` | `taxon` | `sample`, `composition`, `kraken2`, `decaying` |
+| `spb_ground_transit` | `transport_type`, `route` | `composition`, `decaying`; the simulated passenger `coverage` stays a node and edge column and a CGT feature |
+| `roxel` | `type` (road type, the ParaGVAE node class), `name` (street name) | `composition`, `decaying` |
+| NCBI communities | `taxon` | `sample`, classifier and derived layers |
+
+`load_bench_gold(bench_dir, namespace)` reads any of them, `load_bench_gold_all(bench_dir)` returns every gold namespace with labels as `{namespace: GoldLabels}`, and `GoldLabels.values` follows `<namespace>_values.tsv`, which keeps every value in colour-dictionary order, also a value that labels nothing (three spb routes). `load_bench_states(bench_dir, node_namespace=..., edge_namespaces=...)` runs `metametro.states.build_geometric_states` on the bench CFA with `gold=load_bench_gold_all(bench_dir)`: `node_labels`, `node_class_names`, and `edge_targets` come from the gold labels, and the returned CDBG and CGT carry only the bench colours. On spb (`transport_type`; `transport_type`, `route`) and roxel (`type`; `name`) the node labels and class names equal those built from the colours before this change (4583 and 588 nodes), and so do the edge targets and their column order. The change kept the identity of the bubble, read, and phage benches (their gold was already `taxon`, and `accession` is not built by default) and changed `mock_bubble` from `21c978f8…` to `cd7a2e15…` and `mock_chain` from `5baa0727…` to `a397fd80…` (the `genome` labels are now gold lines). `spb_ground_transit` and `roxel` changed too, since their gold left the colours (with the GTFS mirror and the sfnetworks Roxel data used here: `3fda8490…` to `cfd1dcfb…` and `8693adc9…` to `3232245d…`).
 
 ### Gold taxon labels
 
-Gold `taxon` is not a colour of a built graph, so no tool can train on it. A builder that hands `materialize` a CFA with a `taxon` namespace (the bubble benches `bubble_strain_2`, `bubble_error_1`, `bubble_nested_2`, `bubble_shared_2`, `bubble_strain_3_n50`) has those colours removed before any colouring runs and written to:
+Gold `taxon` (the default gold namespace) is not a colour of a built graph, so no tool can train on it. A builder that hands `materialize` a CFA with a `taxon` namespace (the bubble benches `bubble_strain_2`, `bubble_error_1`, `bubble_nested_2`, `bubble_shared_2`, `bubble_strain_3_n50`) has those colours removed before any colouring runs and written to:
 
 | File | Columns |
 | --- | --- |

@@ -12,6 +12,9 @@ class BenchSpec:
     ``properties`` is the last path segment under
     ``data/bench/{name}/{assembler}/{properties}``. It records the knobs that
     change the graph (read budget, k, seed) and is not a machine path.
+    ``gold_namespaces`` are the evaluation targets of this bench: colours,
+    columns, or labels in these namespaces are moved to ``ground_truth/`` and
+    are never readable as colours.
     """
 
     name: str
@@ -27,6 +30,7 @@ class BenchSpec:
     domain_count: int = 0
     k: int = 0
     parent: str = ""
+    gold_namespaces: tuple[str, ...] = ("taxon",)
 
     def path_parts(self) -> tuple[str, str, str]:
         """Return ``(name, assembler, properties)`` for the default output tree."""

@@ -97,6 +97,7 @@ def external_specs() -> dict[str, BenchSpec]:
             scoring=(),
             kind="external",
             k=21,
+            gold_namespaces=("type", "name"),
         ),
         "spb_ground_transit": BenchSpec(
             name="spb_ground_transit",
@@ -105,6 +106,7 @@ def external_specs() -> dict[str, BenchSpec]:
             summary="Saint Petersburg ground transit from the public ORGP GTFS feed. Stops within 60 m that share a name are merged.",
             scoring=(),
             kind="external",
+            gold_namespaces=("transport_type", "route"),
         ),
     }
 

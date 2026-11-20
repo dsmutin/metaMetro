@@ -1,11 +1,15 @@
 """Refuse evaluation targets that were written into a graph a model can read.
 
 Ground truth belongs under ``ground_truth/``. It must not be a feature column
-or a colour namespace on CFA, CDBG, or CGT. Gold ``taxon`` is not a training
-colour: ``GOLD_NAMESPACES`` is rejected like ``truth`` or ``target``.
+or a colour namespace on CFA, CDBG, or CGT. Each bench declares its gold
+namespaces (``BenchSpec.gold_namespaces``; ``GOLD_NAMESPACES``, i.e. ``taxon``,
+for a graph of no known bench). A colour namespace, a column, or a label
+dictionary namespace in that set is rejected like ``truth`` or ``target``.
 """
 
 from __future__ import annotations
+
+from collections.abc import Iterable
 
 from metametro.contracts.colouring import GOLD_NAMESPACES
 from metametro.errors import ContractError
@@ -21,7 +25,7 @@ _FORBIDDEN = (
     "gold_standard",
     "gold_taxon",
 )
-_FORBIDDEN_NAMESPACES = frozenset({"truth", "gold", "target", "expected_action"}) | GOLD_NAMESPACES
+_FORBIDDEN_NAMESPACES = frozenset({"truth", "gold", "target", "expected_action"})
 
 
 def _names(graph: CfaGraph) -> list[str]:
@@ -37,17 +41,26 @@ def _names(graph: CfaGraph) -> list[str]:
     return found
 
 
-def assert_no_target_leak(graph: CfaGraph, *, where: str = "CFA") -> None:
-    """Raise ``ContractError`` when a target column or namespace is on the graph."""
+def assert_no_target_leak(
+    graph: CfaGraph, *, where: str = "CFA", gold_namespaces: Iterable[str] = GOLD_NAMESPACES
+) -> None:
+    """Raise ``ContractError`` when a target column, namespace, or label is on the graph.
+
+    ``gold_namespaces`` is the bench's declared gold set.
+    """
+    gold = frozenset(str(name).lower() for name in gold_namespaces)
+    forbidden = _FORBIDDEN_NAMESPACES | gold
     bad = []
-    for name in _names(graph):
+    for name in dict.fromkeys(_names(graph)):
         folded = name.lower()
-        if any(token in folded for token in _FORBIDDEN):
+        if any(token in folded for token in _FORBIDDEN) or folded in gold:
             bad.append(f"{where} column {name}")
     for row in graph.colors or []:
         namespace = str(row.get("namespace", "")).lower()
-        if namespace in _FORBIDDEN_NAMESPACES:
+        if namespace in forbidden:
             bad.append(f"{where} colour namespace {namespace}")
+    for namespace in sorted({str(row.get("namespace", "")).lower() for row in graph.labels or []} & forbidden):
+        bad.append(f"{where} label namespace {namespace}")
     if bad:
         raise ContractError(["target leaked into the graph: " + "; ".join(bad)])
 

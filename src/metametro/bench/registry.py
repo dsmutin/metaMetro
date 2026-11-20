@@ -75,6 +75,7 @@ SPECS: dict[str, BenchSpec] = {
         summary="Two strains, read length 12, de Bruijn k=5, 20 reads per sample.",
         scoring=("assembly",),
         kind="inprocess",
+        gold_namespaces=("taxon", "genome", "accession"),
         legacy_names=("bubbleblower_reads",),
     ),
     "mock_bubble": BenchSpec(
@@ -84,6 +85,7 @@ SPECS: dict[str, BenchSpec] = {
         summary="MetaMetro four-node bubble fixture.",
         scoring=("assembly",),
         kind="inprocess",
+        gold_namespaces=("taxon", "genome"),
     ),
     "mock_chain": BenchSpec(
         name="mock_chain",
@@ -92,6 +94,7 @@ SPECS: dict[str, BenchSpec] = {
         summary="MetaMetro six-node chain that compacts to three unitigs.",
         scoring=("assembly",),
         kind="inprocess",
+        gold_namespaces=("taxon", "genome"),
     ),
     "synthetic_reads_2": BenchSpec(
         name="synthetic_reads_2",
@@ -100,6 +103,7 @@ SPECS: dict[str, BenchSpec] = {
         summary="Two synthetic genomes and an in-process de Bruijn graph at k=8.",
         scoring=("assembly", "profiling"),
         kind="inprocess",
+        gold_namespaces=("taxon", "genome", "accession"),
     ),
 }
 

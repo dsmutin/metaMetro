@@ -13,6 +13,7 @@ colour weights lose a column together. Surviving columns stay in increasing
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from copy import deepcopy
 from typing import Sequence
 
@@ -34,6 +35,7 @@ def filter_colours(
     color_ids: Sequence[int] | None = None,
     namespace: str | None = None,
     namespaces: Sequence[str] | None = None,
+    gold_namespaces: Iterable[str] = GOLD_NAMESPACES,
 ) -> CfaGraph | Cdbg | Cgt:
     """Return a copy of ``graph`` that keeps only the selected colours.
 
@@ -42,7 +44,8 @@ def filter_colours(
     namespaces are a union. ``color_ids`` with a namespace is the
     intersection. A requested namespace with no rows in the colour
     dictionary raises ``ContractError``. If that name is in
-    ``GOLD_NAMESPACES`` (``taxon``), the message points to
+    ``gold_namespaces`` (the bench's declared gold set; default
+    ``GOLD_NAMESPACES``, i.e. ``taxon``), the message points to
     ``load_bench_gold``. A graph that does carry ``taxon`` is filtered as
     usual. A CGT has no namespace dictionary; pass ``color_ids`` there.
     The input graph is not modified.
@@ -54,7 +57,7 @@ def filter_colours(
             raise ContractError(["namespaces must be a non-empty sequence of strings"])
         keep: set[int] = set()
         for name in namespaces:
-            keep |= _keep_ids(graph, color_ids=None, namespace=name)
+            keep |= _keep_ids(graph, color_ids=None, namespace=name, gold=gold_namespaces)
         if color_ids is not None:
             requested = set(_id_list(color_ids))
             missing = [color_id for color_id in requested if color_id not in keep]
@@ -62,7 +65,7 @@ def filter_colours(
                 raise ContractError([f"color_id {color_id} is not in the requested namespaces" for color_id in sorted(missing)])
             keep &= requested
     else:
-        keep = _keep_ids(graph, color_ids=color_ids, namespace=namespace)
+        keep = _keep_ids(graph, color_ids=color_ids, namespace=namespace, gold=gold_namespaces)
     note = namespace if namespaces is None else ",".join(str(name) for name in namespaces)
     if isinstance(graph, CfaGraph):
         return _filter_cfa(graph, keep, note)
@@ -78,6 +81,7 @@ def _keep_ids(
     *,
     color_ids: Sequence[int] | None,
     namespace: str | None,
+    gold: Iterable[str] = GOLD_NAMESPACES,
 ) -> set[int]:
     if color_ids is None and namespace is None:
         raise ContractError(["colour filter requires color_ids or namespace"])
@@ -99,7 +103,7 @@ def _keep_ids(
     if namespace is not None:
         in_namespace = {color_id for color_id, row_namespace in dictionary.items() if row_namespace == namespace}
         if not in_namespace:
-            raise ContractError([_missing_namespace_message(namespace)])
+            raise ContractError([_missing_namespace_message(namespace, gold)])
     else:
         in_namespace = set(dictionary)
     if requested is None:
@@ -116,8 +120,8 @@ def _keep_ids(
     return set(requested) & in_namespace if rows is not None else set(requested)
 
 
-def _missing_namespace_message(namespace: str) -> str:
-    if namespace in GOLD_NAMESPACES:
+def _missing_namespace_message(namespace: str, gold: Iterable[str] = GOLD_NAMESPACES) -> str:
+    if namespace in set(gold):
         return f"{namespace} is gold ground truth, not a colour namespace; read it with load_bench_gold"
     return f"colour namespace {namespace} has no rows in the colour dictionary"
 
