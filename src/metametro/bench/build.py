@@ -37,6 +37,34 @@ class BuildResult:
     status: str
 
 
+@dataclass(frozen=True)
+class ClassifierInputs:
+    """Kraken2 and Kaiju paths given to ``build``. ``None`` means not given."""
+
+    kraken_db: Path | None = None
+    kraken_output: Path | None = None
+    kaiju_db: Path | None = None
+    kaiju_output: Path | None = None
+
+    def given(self) -> dict[str, Path]:
+        """Return the paths that were given, by ``BuildContext`` field name."""
+        return {name: Path(value) for name, value in vars(self).items() if value is not None}
+
+    def check(self) -> None:
+        """Raise ``ContractError`` for every given path that does not exist."""
+        missing = [
+            f"{name} (--{name.replace('_', '-')}) does not exist: {path}"
+            for name, path in self.given().items()
+            if not path.exists()
+        ]
+        if missing:
+            raise ContractError(missing)
+
+    def context(self, colourings: tuple[str, ...] | None, **found: object) -> BuildContext:
+        """Return a ``BuildContext``. A given path wins over one in ``found``."""
+        return BuildContext(selected=colourings, **{**found, **self.given()})
+
+
 def build(
     name: str,
     *,
@@ -45,6 +73,10 @@ def build(
     root: Path | None = None,
     execute: bool = False,
     gtfs: Path | None = None,
+    kraken_db: Path | None = None,
+    kraken_output: Path | None = None,
+    kaiju_db: Path | None = None,
+    kaiju_output: Path | None = None,
 ) -> BuildResult:
     """Build ``name``.
 
@@ -53,18 +85,26 @@ def build(
     only when ``execute`` is true, and they stop if a required program is
     missing. ``colourings`` restricts the registry. ``None`` applies every
     colouring that can run, including colourings registered later.
+    ``kraken_db``, ``kraken_output``, ``kaiju_db``, and ``kaiju_output`` go
+    to the colourings of every benchmark kind. A given path wins over one found
+    under ``work/``. A given path that does not exist raises ``ContractError``
+    before anything is written.
     """
     spec = resolve(name)
+    classifiers = ClassifierInputs(kraken_db, kraken_output, kaiju_db, kaiju_output)
+    classifiers.check()
     destination = Path(outdir) if outdir is not None else default_outdir(spec, root=root)
     if destination.exists() and any(destination.iterdir()):
         raise ContractError([f"output directory is not empty: {destination}"])
     if spec.kind == "inprocess":
-        return _inprocess(spec, destination, colourings, requested=name)
+        return _inprocess(spec, destination, colourings, classifiers, requested=name)
     if spec.kind == "community":
-        return _community(spec, destination, colourings, execute=execute, requested=name)
+        return _community(
+            spec, destination, colourings, classifiers, execute=execute, requested=name
+        )
     if spec.kind == "external":
         return _external(
-            spec, destination, colourings, execute=execute, gtfs=gtfs, requested=name
+            spec, destination, colourings, classifiers, execute=execute, gtfs=gtfs, requested=name
         )
     raise ContractError([f"unknown benchmark kind {spec.kind}"])
 
@@ -74,13 +114,17 @@ def build_all(
     execute: bool = False,
     gtfs: Path | None = None,
     root: Path | None = None,
+    kraken_db: Path | None = None,
+    kraken_output: Path | None = None,
+    kaiju_db: Path | None = None,
+    kaiju_output: Path | None = None,
 ) -> list[BuildResult]:
     """Build every registered benchmark.
 
     In-process graphs are always materialised. Community and external benches
     write their contract. They download and assemble only when ``execute`` is
     true. A directory that already has ``manifest.yaml`` and ``identity.sha256``
-    is left as it is.
+    is left as it is. Classifier paths go to every benchmark that is built.
     """
     from metametro.bench.registry import list_specs
 
@@ -104,6 +148,10 @@ def build_all(
                 execute=execute if spec.kind != "inprocess" else False,
                 gtfs=gtfs,
                 root=root,
+                kraken_db=kraken_db,
+                kraken_output=kraken_output,
+                kaiju_db=kaiju_db,
+                kaiju_output=kaiju_output,
             )
         )
     return results
@@ -144,10 +192,11 @@ def _inprocess(
     spec: BenchSpec,
     destination: Path,
     colourings: tuple[str, ...] | None,
+    classifiers: ClassifierInputs,
     *,
     requested: str,
 ) -> BuildResult:
-    ctx = BuildContext(selected=colourings)
+    ctx = classifiers.context(colourings)
     graph = PREPARE[spec.name](destination, ctx)
     made: Materialized = materialize(graph, destination, ctx)
     _finish_manifest(
@@ -171,6 +220,7 @@ def _community(
     spec: BenchSpec,
     destination: Path,
     colourings: tuple[str, ...] | None,
+    classifiers: ClassifierInputs,
     *,
     execute: bool,
     requested: str,
@@ -195,7 +245,7 @@ def _community(
     from metametro.bench.data.universal import ncbi_pipeline as pipe
 
     tools = pipe.log_tool_versions()
-    ctx = _community_context(spec, destination, colourings)
+    ctx = _community_context(spec, destination, colourings, classifiers)
     made = materialize(graph, destination, ctx)
     _finish_manifest(
         spec,
@@ -287,15 +337,23 @@ def _try_classifier_indexes(destination: Path) -> None:
         return
 
 
-def _community_context(spec: BenchSpec, destination: Path, colourings: tuple[str, ...] | None) -> BuildContext:
-    """Point colourings at classifier databases built from the full ``db`` set."""
+def _community_context(
+    spec: BenchSpec,
+    destination: Path,
+    colourings: tuple[str, ...] | None,
+    classifiers: ClassifierInputs,
+) -> BuildContext:
+    """Point colourings at classifier databases built from the full ``db`` set.
+
+    A path given to ``build`` wins over the one found under ``work/``.
+    """
     work = destination / "work"
     kraken_db = work / "kraken_db"
     kaiju_db = work / "kaiju_db"
     kraken_out = work / "classifier" / "contigs.kraken"
     kaiju_out = work / "classifier" / "contigs.kaiju"
-    return BuildContext(
-        selected=colourings,
+    return classifiers.context(
+        colourings,
         work_dir=work,
         kraken_db=kraken_db if (kraken_db / "hash.k2d").is_file() else None,
         kaiju_db=kaiju_db if kaiju_db.is_dir() else None,
@@ -337,6 +395,7 @@ def _external(
     spec: BenchSpec,
     destination: Path,
     colourings: tuple[str, ...] | None,
+    classifiers: ClassifierInputs,
     *,
     execute: bool,
     gtfs: Path | None,
@@ -391,7 +450,7 @@ def _external(
         if not coloured.is_dir():
             raise ContractError(["phage baseline did not write coloured_cfa"])
         graph = load_cfa(coloured)
-        ctx = BuildContext(selected=colourings)
+        ctx = classifiers.context(colourings)
         made = materialize(graph, destination, ctx)
         _finish_manifest(
             spec,
@@ -413,7 +472,7 @@ def _external(
         from metametro.bench.data.universal.roxel import build_roxel_cfa
 
         graph = build_roxel_cfa(k=spec.k or 21)
-        ctx = BuildContext(selected=colourings)
+        ctx = classifiers.context(colourings)
         made = materialize(graph, destination, ctx)
         _finish_manifest(
             spec,
@@ -444,7 +503,7 @@ def _external(
         from metametro.formats.cfa.io import load_cfa
 
         graph = load_cfa(staged)
-        ctx = BuildContext(selected=colourings)
+        ctx = classifiers.context(colourings)
         made = materialize(graph, destination, ctx)
         _finish_manifest(
             spec,

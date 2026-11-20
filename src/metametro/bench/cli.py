@@ -44,7 +44,17 @@ def main(argv: list[str] | None = None) -> int:
         help="write the pin and abundance table, and do not download or assemble",
     )
     parser.add_argument("--gtfs", type=Path, default=None, help="GTFS zip for spb_ground_transit")
+    parser.add_argument("--kraken-db", type=Path, default=None, help="Kraken2 database directory")
+    parser.add_argument("--kraken-output", type=Path, default=None, help="existing Kraken2 output for the graph nodes")
+    parser.add_argument("--kaiju-db", type=Path, default=None, help="Kaiju database directory")
+    parser.add_argument("--kaiju-output", type=Path, default=None, help="existing Kaiju output for the graph nodes")
     args = parser.parse_args(argv)
+    classifiers = {
+        "kraken_db": args.kraken_db,
+        "kraken_output": args.kraken_output,
+        "kaiju_db": args.kaiju_db,
+        "kaiju_output": args.kaiju_output,
+    }
     if args.list_colourings:
         from metametro.bench.colourings import listed_colourings
 
@@ -57,7 +67,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.all and args.outdir is not None:
         parser.error("--all writes each benchmark under data/bench")
     if args.all:
-        results = build_all(execute=args.execute and not args.contract_only, gtfs=args.gtfs)
+        results = build_all(
+            execute=args.execute and not args.contract_only, gtfs=args.gtfs, **classifiers
+        )
         failed = [item for item in results if item.status not in {"built", "contract", "present"}]
         for item in results:
             print(f"{item.spec.name}\t{item.status}\t{item.outdir}")
@@ -77,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
         colourings=colourings,
         execute=not args.contract_only,
         gtfs=args.gtfs,
+        **classifiers,
     )
     print(f"bench\t{result.spec.name}")
     print(f"status\t{result.status}")

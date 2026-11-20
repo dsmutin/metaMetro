@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from metametro.bench import build
+from metametro.bench import BuildResult, build
 from metametro.bench.colourings import BuildContext, register, unregister
 from metametro.bench.leakage import assert_no_target_leak
 from metametro.bench.registry import list_specs
@@ -392,3 +392,64 @@ def test_checkout_root_rejects_an_installed_package(tmp_path: Path) -> None:
     installed.write_text("", encoding="utf-8")
     with pytest.raises(ContractError, match="--outdir"):
         checkout_root(installed)
+
+
+def test_inprocess_build_reads_an_explicit_kraken2_output(tmp_path: Path) -> None:
+    """``kraken_output`` reaches an in-process bench and paints the ``kraken2`` layer."""
+    calls = tmp_path / "contigs.kraken"
+    calls.write_text("C\tA\t562\t6\t562:3\nC\tB\t1280\t6\t1280:3\nU\tS\t0\t6\t0:3\n", encoding="utf-8")
+    result = build(
+        "bubble_strain_2",
+        outdir=tmp_path / "out",
+        colourings=("kraken2",),
+        kraken_output=calls,
+    )
+    assert result.colourings == ("kraken2",)
+    cfa = load_cfa(result.outdir / "cfa")
+    kraken = {row["color_id"]: row["value"] for row in cfa.colors or [] if row["namespace"] == "kraken2"}
+    assert sorted(kraken.values()) == ["1280", "562"]
+    painted = {
+        row["node_id"]: {kraken[item] for item in row["color_set"].split(",") if item in kraken}
+        for row in cfa.nodes
+    }
+    assert painted["A"] == {"562"}
+    assert painted["B"] == {"1280"}
+    assert painted["S"] == set()
+
+
+def test_build_rejects_a_missing_classifier_path(tmp_path: Path) -> None:
+    """A given classifier path that does not exist stops the build before any output."""
+    out = tmp_path / "out"
+    with pytest.raises(ContractError, match="--kaiju-output"):
+        build("bubble_strain_2", outdir=out, kaiju_output=tmp_path / "absent.kaiju")
+    assert not out.exists()
+
+
+def test_cli_benchbuild_forwards_classifier_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """``--kraken-db``, ``--kraken-output``, ``--kaiju-db``, ``--kaiju-output`` reach ``build``."""
+    seen: dict[str, object] = {}
+
+    def fake_build(name: str, **kwargs: object) -> BuildResult:
+        seen.update(kwargs)
+        from metametro.bench.registry import resolve
+
+        return BuildResult(spec=resolve(name), outdir=tmp_path, identity="x", colourings=(), status="built")
+
+    monkeypatch.setattr("metametro.bench.cli.build", fake_build)
+    argv = [
+        "benchbuild",
+        "bubble_strain_2",
+        "--kraken-db",
+        "kdb",
+        "--kraken-output",
+        "k.out",
+        "--kaiju-db",
+        "jdb",
+        "--kaiju-output",
+        "j.out",
+    ]
+    assert main(argv) == 0
+    assert seen["kraken_db"] == Path("kdb")
+    assert seen["kraken_output"] == Path("k.out")
+    assert seen["kaiju_db"] == Path("jdb")
+    assert seen["kaiju_output"] == Path("j.out")

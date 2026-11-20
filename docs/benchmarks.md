@@ -47,6 +47,8 @@ Every colouring registered in `metametro.bench.colourings` that can run is appli
 
 A half community (`*_half`) still simulates the half metagenome. Its Kraken2 and Kaiju library is the parent pin's full `db` set (the non-synonymous partners), not the half set. A community with a parent (`*_half`, `*_x10`) does not run `datasets`: build the parent first, because the derived build reuses its FASTA and its `data/raw/<parent>_assembly_data_report.jsonl` (the first ancestor without a parent). Kraken2 and Kaiju indexes need `kraken2` or `kaiju` plus Samovar on `PATH`; without them the indexes and those colourings are skipped.
 
+`--kraken-db`, `--kraken-output`, `--kaiju-db`, and `--kaiju-output` (the `build()` and `build_all()` parameters `kraken_db`, `kraken_output`, `kaiju_db`, `kaiju_output`) pass Kraken2 and Kaiju inputs to the `kraken2` and `kaiju` colourings on every benchmark kind: in-process, community, and external. An output file is read as it is; its sequence ids must be CFA node ids. A database is used only when `kraken2` or `kaiju` is on `PATH`. A path given here wins over the one a community build finds under `work/`. A given path that does not exist stops the build with an error that names the flag, before anything is written. For example, `metametro benchbuild bubble_strain_2 --colouring kraken2 --kraken-output contigs.kraken` paints the `kraken2` layer on the in-process bubble.
+
 Downstream tools do not recolour. They load the ToCUMG and name namespaces:
 
 ```python
