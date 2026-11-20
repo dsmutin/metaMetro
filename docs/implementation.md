@@ -30,7 +30,19 @@ edited = apply_edit_proposal(proposal, cdbg)  # new CDBG; cdbg is not modified
 edge = edge_prediction(cgt, csr_slot, predicted_class=..., probability=..., confidence=..., model_id=..., model_version=..., cdbg=cdbg)
 ```
 
-Fixtures: `mock_cfa()`, `mock_cdbg()`, `mock_cgt()`, `chain_cfa()`, `synthetic_genomes()`.
+Fixtures in `metametro.fixtures`: `mock_cfa()`, `mock_cdbg()`, `mock_cgt()`, `chain_cfa()`, `chain_cdbg()`, `synthetic_genomes()`. All but `synthetic_genomes()` are also exported from `metametro`.
+
+The complete list of public names is `metametro.__all__`. Besides the calls above it exports:
+
+- reading and writing: `load_cdbg`, `load_cgt`, `dump_cfa`, `dump_cdbg`, `dump_cgt`;
+- conversion back and edge arrays: `cdbg_to_cfa`, `edge_index_array`;
+- colouring (Contract 4): `colour_cfa`, `colour_by_reads`, `colour_by_composition`, `colour_decaying`, `paint_namespace`, `filter_colours`, `kmeans_onehot`;
+- CDBG annotations: `annotate_cdbg`, `get_node_annotations`, `get_edge_annotations`;
+- identity checks: `assert_cgt_matches_cdbg`, `link_cfa_edge_id`;
+- edits and predictions: `EditProposal`, `GraphEdit`, `validate_edit_proposal`, `validate_edit_application`, `GraphPrediction`;
+- contract versions: `CONTRACTS`.
+
+`metametro.bench` exports `build`, `BuildResult`, `list_specs`, `resolve`, `load_bench_cfa`, `load_bench_cdbg`, `load_bench_cgt`, and `namespaces_for`.
 
 | Contract | Module | What the minimal code does |
 | --- | --- | --- |
@@ -70,6 +82,13 @@ Mandatory pytest covers, for each format: a valid object, a missing field, a bad
 | Samovar `generate` | Contract 1 baseline (InSilicoSeq) | `samovar_generate_command` |
 | MEGAHIT | Contract 2 baseline | `megahit_command` (`k` odd and ≥ 15, `--keep-tmp-files`) |
 | `megahit_toolkit contig2fastg` | Intermediate assembly graph | `contig2fastg_command`; parsed by `fastg_to_cfa` |
+| Flye | Contract 2 repeat graph from ONT reads | `flye_command` (`--meta` by default); the GFA is read by `gfa_to_cfa` |
+| minimap2 | Contig-to-genome mapping | `minimap2_command` builds the argv; the NCBI community pipeline calls `minimap2 -x asm20` itself and skips node-level F1 when `minimap2` is not on `PATH` |
+| NCBI `datasets` | Genome download for NCBI communities | `benchbuild` on a community without `--contract-only` |
+| Kraken2 | `kraken2` colouring | `run_kraken2`, or an existing output through `colour_from_kraken2_file` |
+| Kaiju | `kaiju` colouring | `run_kaiju`, or an existing output through `colour_from_kaiju_file` |
+| AMBER | Genome-binning score | `amber.py` through `amber_command` / `score_bins`; `AMBER_SRC` or `PATH` |
+| `Rscript` with `sf`, `sfnetworks`, `tidygraph` | `roxel` street graph | `Rscript -e` in `bench/data/universal/roxel.py` |
 | PyTorch Geometric | Contract 7 optional backend | `run_ds(..., backend="pyg")`; install with `environment-pyg.yml` |
 
-Bifrost is a permitted CDBG backend and is not linked in this version. Citations for the tools that are actually invoked are in `cite/tools.bib`. Samovar has no paper entry here.
+Bifrost is a permitted CDBG backend and is not linked in this version. `cite/tools.bib` has entries for MEGAHIT, InSilicoSeq, AMBER, PyTorch Geometric, Kraken2, Kaiju, and minimap2. Flye, Samovar, and the R packages `sf`, `sfnetworks`, and `tidygraph` have no entry there.

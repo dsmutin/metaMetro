@@ -68,7 +68,7 @@ From v0.17.2 on, every version has a git tag `vX.Y.Z` that matches `VERSION`. Ea
 
 `environment.yml` sets `PYTHONPATH=src` and pins every Python dependency.
 
-External tools are not in `environment.yml` and are not pinned there: MEGAHIT, Kraken2, Kaiju, minimap2, NCBI `datasets`, Samovar, and AMBER (`amber.py` at tag `v2.0.17-beta`). Install them separately when a benchmark or baseline needs them.
+External tools are not in `environment.yml` and are not pinned there: MEGAHIT (with `megahit_toolkit`), Flye, Kraken2, Kaiju, minimap2, NCBI `datasets`, Samovar, AMBER (`amber.py` at tag `v2.0.17-beta`), and, for `roxel`, `Rscript` with the R packages `sf`, `sfnetworks`, and `tidygraph`. Install them separately when a benchmark or baseline needs them.
 
 The Contract 7 PyTorch Geometric backend is optional and is not in the required environment:
 
