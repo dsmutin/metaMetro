@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      METAMALEVICH_COMMIT: b0f3c736fd9973b8e53056fe860445fcbe4dab9a
+      METAMALEVICH_COMMIT: 8d80168696ed4321eadb39a45e072ceeb4076fd9
       SAMOVAR_COMMIT: d6bb8246f9e31c7890f4393aa92bc7e0aa53d593
     defaults:
       run:
@@ -104,6 +104,8 @@ jobs:
         run: |
           git clone https://github.com/dsmutin/metaMalevich.git "$RUNNER_TEMP/metaMalevich"
           git -C "$RUNNER_TEMP/metaMalevich" checkout "$METAMALEVICH_COMMIT"
+          # --no-deps: metaMalevich pins metametro==0.24.0, which is not on PyPI and
+          # is not the version under test; its other dependencies are installed above.
           python -m pip install --no-deps --no-build-isolation -e "$RUNNER_TEMP/metaMalevich"
       - name: metaMalevich solve on phage_10
         timeout-minutes: 30
@@ -112,4 +114,4 @@ jobs:
           metamalevich solve --bench phage_10 --execute --workdir "$RUNNER_TEMP/solve" -o "$RUNNER_TEMP/solve.json"
           echo "metamalevich solve exited $? (not used)"
           set -e
-          python scripts/check_phage10_solve.py solve "$RUNNER_TEMP/solve.json"
+          python scripts/check_phage10_solve.py solve "$RUNNER_TEMP/solve.json" "$RUNNER_TEMP/solve"
