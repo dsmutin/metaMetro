@@ -64,7 +64,7 @@ python -m pip install --no-deps --no-build-isolation -e .
 
 The last step installs the package into that environment, which gives the `metametro` command and `python -m metametro`. CI runs the same step.
 
-Every version has a git tag `vX.Y.Z` that matches `VERSION`. To use a fixed version, check out its tag before the install, for example `git checkout v0.17.13`.
+From v0.17.2 on, every version has a git tag `vX.Y.Z` that matches `VERSION`. Earlier versions have no tags. To use a fixed version, check out its tag before the install, for example `git checkout v0.17.13`.
 
 `environment.yml` sets `PYTHONPATH=src` and pins every Python dependency.
 
@@ -90,7 +90,7 @@ python examples/edit_proposal/run.py
 
 `examples/toy/run.py` checks the CLI baseline JSON (`status`, `ok`, `input_path`). The external phage run (Samovar reads, MEGAHIT intermediate graph, colouring, CDBG, CGT, both GCN backends) is `scripts/phage_baseline.py`, recorded in [docs/baseline-run.md](docs/baseline-run.md).
 
-Benchmark graphs are built with `metametro benchbuild`. The default directory is `data/bench/{name}/{assembler}/{properties}/` under the root of the checkout, and it is gitignored. Outside a checkout, for example from the conda package, pass `--outdir`. See [docs/benchmarks.md](docs/benchmarks.md).
+Benchmark graphs are built with `metametro benchbuild`. The default directory is `data/bench/{name}/{assembler}/{properties}/` under the root of the checkout, and it is gitignored. Outside a checkout, for example from the conda package, pass `--outdir`. See [docs/benchmarks.md](docs/benchmarks.md). The phage graph has a second, older generator outside `benchbuild`: `scripts/phage_baseline.py`, described above. The registered benchmark for the same five phages is `phage_species_5`.
 
 ```bash
 metametro benchbuild --list
