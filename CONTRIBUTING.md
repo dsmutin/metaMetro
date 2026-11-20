@@ -86,7 +86,7 @@ The `pip` step installs the package into the conda environment (no dependencies 
 
 ## GitHub
 
-Never `git push` unless the human explicitly asks. CI runs on GitHub after they push.
+Never `git push` unless the human explicitly asks. CI runs on GitHub after they push. A push straight to `main` without a pull request (see [Benchmarks](#benchmarks)) also needs that explicit request for the task.
 
 ## Benchmarks
 
