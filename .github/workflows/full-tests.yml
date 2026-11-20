@@ -84,9 +84,14 @@ jobs:
           environment-file: environment.yml
       - name: Install MetaMetro, MEGAHIT, and metaMalevich's own dependencies
         run: |
-          conda install -y -n metametro -c conda-forge -c bioconda megahit=1.2.9 pandas=3.0.6 altair=6.2.2
+          # gxx: metaMalevich native.py compiles with the first g++ on PATH; its
+          # environment.yml pins gxx_linux-64=16.2.0, and gxx puts that compiler at g++.
+          conda install -y -n metametro -c conda-forge -c bioconda megahit=1.2.9=haf24da9_8 \
+            pandas=3.0.6 altair=6.2.2 gxx_linux-64=16.2.0 gxx=16.2.0
           python -m pip install --no-deps --no-build-isolation -e .
           command -v megahit megahit_toolkit
+          test "$(command -v g++)" = "$CONDA_PREFIX/bin/g++"
+          g++ --version | head -n 1
       - name: Install Samovar (read simulator) at a pinned commit
         run: |
           git clone https://github.com/ctlab/samovar.git "$RUNNER_TEMP/samovar"
