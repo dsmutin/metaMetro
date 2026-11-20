@@ -158,7 +158,7 @@ Features, training labels, colours, predictions, and confidence are different ob
 | --- | --- |
 | `X_node` / `X_edge` | Numeric features used by a model. Described by the feature registry. |
 | `y_node` / `y_edge` | Integer training labels. They are not columns of `X` and are not concatenated into `X`. |
-| `C_node` / `C_edge` | Colours: one column per CFA `color_id`, from every colour namespace on the graph (`sample`, `taxon`, `composition`, `kraken2`, `kaiju`, `decaying`, and others), not only samples. A colour is not a feature and not a label. |
+| `C_node` / `C_edge` | Colours: one column per CFA `color_id`, from every colour namespace on the graph (`sample`, `composition`, `kraken2`, `kaiju`, `decaying`, and others), not only samples. A colour is not a feature and not a label. A bench CGT never has gold `taxon` columns; those live in `ground_truth/` (`load_bench_gold_cgt`). |
 | prediction | A separate object joined by `dense_id`, `source_id`, and CFA ids. It is not written into the CGT arrays. |
 | confidence | A field on that prediction. The NumPy and PyG softmax models set it equal to the predicted class probability. That is not a second uncertainty estimator and not an accuracy. |
 

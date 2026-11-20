@@ -108,12 +108,12 @@ def test_inprocess_build_stacks_composition_and_decaying(tmp_path: Path) -> None
     assert "read_accession" not in result.colourings
     cfa = load_cfa(result.outdir / "cfa")
     namespaces = {row["namespace"] for row in cfa.colors or []}
-    assert "taxon" in namespaces
+    assert "taxon" not in namespaces
     assert "composition" in namespaces
     assert "decaying" in namespaces
-    selected = filter_colours(cfa, namespaces=("taxon", "composition"))
+    selected = filter_colours(cfa, namespaces=("decaying", "composition"))
     kept = {row["namespace"] for row in selected.colors or []}
-    assert kept == {"taxon", "composition"}
+    assert kept == {"decaying", "composition"}
     cdbg = load_bench_cdbg(result.outdir, namespaces=namespaces_for(("composition_kmeans",)))
     assert all(int(row["color_id"]) in {int(item["color_id"]) for item in cdbg.colors or []} for row in cdbg.colors or [])
     assert {row["namespace"] for row in cdbg.colors or []} == {"composition"}

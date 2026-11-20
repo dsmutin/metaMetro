@@ -1,6 +1,8 @@
 """Write CFA, CDBG, and CGT after every applicable colouring.
 
-The CGT carries the feature layer from ``metametro.bench.features``.
+The CGT carries the feature layer from ``metametro.bench.features``. Gold
+colours (``taxon``) are moved to ``ground_truth/`` before any colouring runs,
+so no colouring and no graph file sees them.
 """
 
 from __future__ import annotations
@@ -10,6 +12,7 @@ from pathlib import Path
 
 from metametro.bench.colourings import BuildContext, applicable
 from metametro.bench.features import node_feature_layer
+from metametro.bench.ground_truth import gold_identity_lines, split_gold, write_gold
 from metametro.bench.identity import graph_identity, write_identity
 from metametro.bench.leakage import assert_cgt_no_target_leak, assert_no_target_leak
 from metametro.converters.cdbg_to_cgt import cdbg_to_cgt
@@ -36,10 +39,13 @@ class Materialized:
 
 def materialize(graph: CfaGraph, outdir: Path, ctx: BuildContext) -> Materialized:
     """Apply colourings, reject target leakage, and write the three graphs."""
+    graph, gold = split_gold(graph)
     coloured = graph
     names: list[str] = []
     for colouring in applicable(graph, ctx):
-        if ctx.selected is not None and not colouring.available(coloured, ctx):
+        if not colouring.available(coloured, ctx):
+            if ctx.selected is None:
+                continue
             from metametro.errors import ContractError
 
             raise ContractError([f"selected colouring cannot run on this graph: {colouring.name}"])
@@ -51,6 +57,7 @@ def materialize(graph: CfaGraph, outdir: Path, ctx: BuildContext) -> Materialize
         raise ContractError(["no colouring could be applied"])
     assert_no_target_leak(coloured)
     outdir.mkdir(parents=True, exist_ok=True)
+    write_gold(outdir, gold, coloured)
     dump_cfa(coloured, outdir / "cfa")
     cdbg = cfa_to_cdbg(coloured)
     dump_cdbg(cdbg, outdir / "cdbg")
@@ -65,7 +72,7 @@ def materialize(graph: CfaGraph, outdir: Path, ctx: BuildContext) -> Materialize
     assert_cgt_matches_cdbg(cgt, cdbg)
     dump_cgt(cgt, outdir / "cgt")
     applied = tuple(names)
-    digest = graph_identity(coloured, colourings=applied)
+    digest = graph_identity(coloured, colourings=applied, ground_truth=gold_identity_lines(gold))
     write_identity(outdir / "identity.sha256", digest)
     write_yaml(
         outdir / "manifest.yaml",

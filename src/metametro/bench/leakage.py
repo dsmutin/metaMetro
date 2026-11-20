@@ -1,11 +1,13 @@
 """Refuse evaluation targets that were written into a graph a model can read.
 
 Ground truth belongs under ``ground_truth/``. It must not be a feature column
-or a colour namespace on CFA, CDBG, or CGT.
+or a colour namespace on CFA, CDBG, or CGT. Gold ``taxon`` is not a training
+colour: ``GOLD_NAMESPACES`` is rejected like ``truth`` or ``target``.
 """
 
 from __future__ import annotations
 
+from metametro.contracts.colouring import GOLD_NAMESPACES
 from metametro.errors import ContractError
 from metametro.formats.cfa.model import CfaGraph
 from metametro.formats.cgt.model import Cgt
@@ -19,7 +21,7 @@ _FORBIDDEN = (
     "gold_standard",
     "gold_taxon",
 )
-_FORBIDDEN_NAMESPACES = frozenset({"truth", "gold", "target", "expected_action"})
+_FORBIDDEN_NAMESPACES = frozenset({"truth", "gold", "target", "expected_action"}) | GOLD_NAMESPACES
 
 
 def _names(graph: CfaGraph) -> list[str]:

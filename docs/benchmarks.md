@@ -27,27 +27,27 @@ It is relative to the root of the MetaMetro checkout, not to the current directo
 | Path | Role |
 | --- | --- |
 | `cfa/`, `cdbg/`, `cgt/` | The three graph structures |
-| `ground_truth/` | Evaluation labels. Not a model input. `mock_bubble` and `mock_chain` have none |
+| `ground_truth/` | Evaluation labels. Not a model input. `mock_bubble` and `mock_chain` have none. On the five hand-built bubble benches it also holds the gold taxon labels, `taxon_nodes.tsv` and `taxon_edges.tsv` (see below) |
 | `genomes/`, `reads/` | Read benchmarks (`bubble_reads_2`, `synthetic_reads_2`): the simulated genomes and the reads with their metadata |
 | `contract/` | Community and external benchmarks: the accession pin or tool parameters |
 | `work/` | Community and external benchmarks after download and assembly: downloads, assembly, classifier databases and outputs |
 | `manifest.yaml` | Bench name, `colourings` (the colourings applied, in order), identity; on an assembled NCBI community also `tools`, the `--version` line of megahit, kraken2, kaiju, minimap2, and samovar (`absent` when not on `PATH`), also written to `work/commands.log`. Not part of the identity |
-| `identity.sha256` | Digest of sequences, topology, and colour sets |
+| `identity.sha256` | Digest of sequences, topology, colour sets, and the gold labels moved to `ground_truth/` |
 
 The CGT carries a feature layer in `node_features.npy`, separate from colours: for each unitig, L2-normalised canonical k-mer counts (`kmer:k4:<kmer>`, 136 columns at the default `k=4`) when every unitig has a sequence, and `coverage`, the mean CFA node coverage of the unitig, when the CFA has a `coverage` column. It adds no colour namespace and does not change `node_colors` or `identity.sha256`. `manifest.yaml` records `features.kmer_k`. `load_bench_cgt(outdir)` rebuilds the same layer; `load_bench_cgt(outdir, features=False)` gives an empty feature matrix.
 
 The `composition` colour layer is computed from this feature matrix. `composition_kmeans` runs `kmeans_onehot(node_features, n_clusters=8, seed=0)` on the CGT rows, one row per unitig. Cluster `i` is the colour value `cluster_i`, and the `composition` colour ids follow cluster order. So the `composition` columns of `node_colors` are that one-hot matrix, the same matrix ParaGVAE used to compute when a CGT had no colours. Every CFA node of a unitig gets the unitig's cluster. An edge gets the cluster when both of its ends have the same one.
 
-Every colouring registered in `metametro.bench.colourings` that can run is applied, including a colouring added after the benchmark was introduced. `--colouring` restricts that set and runs the named colourings in order. It works only for a single benchmark: `--all --colouring` is a parser error. Each one is checked against the graph as coloured so far, and one that cannot run stops the build with an error instead of being skipped. `metametro benchbuild --list-colourings` prints the registry.
+Every colouring registered in `metametro.bench.colourings` that can run is applied, including a colouring added after the benchmark was introduced. Each automatic colouring is checked against the graph as coloured so far and skipped when it cannot run, so `decaying` sees the layers written before it. `--colouring` restricts that set and runs the named colourings in order. It works only for a single benchmark: `--all --colouring` is a parser error. Each one is checked against the graph as coloured so far, and one that cannot run stops the build with an error instead of being skipped. `metametro benchbuild --list-colourings` prints the registry.
 
 | Colouring | Namespace | Auto | When it runs |
 | --- | --- | --- | --- |
-| `as_built` | existing (taxon, sample, route, …) | yes | always; keeps colours already on the graph |
+| `as_built` | existing (sample, route, …) | yes | always; keeps colours already on the graph except gold `taxon`, which is moved to `ground_truth/` first |
 | `read_depth` | `sample` | yes | reads and integer `k` are on the build |
 | `composition_kmeans` | `composition` | yes | every node has a sequence and the graph compacts to at least two unitigs |
 | `kraken2` | `kraken2` | yes | Kraken2 output or `kraken2` plus a database |
 | `kaiju` | `kaiju` | yes | Kaiju output or `kaiju` plus an FM-index |
-| `decaying` | `decaying` | yes | the graph already has colours and edges |
+| `decaying` | `decaying` | yes | the graph has edges and an allowed source layer; it leaks the first of `sample`, `kraken2`, `kaiju`, `composition` on the graph, never `taxon` |
 | `read_accession` | `accession` | no | named with `--colouring`; ISS-style read ids. Simulated accessions leak truth, so this is not auto |
 
 A half community (`*_half`) still simulates the half metagenome. Its Kraken2 and Kaiju library is the parent pin's full `db` set (the non-synonymous partners), not the half set. A community with a parent (`*_half`, `*_x10`) does not run `datasets`: build the parent first, because the derived build reuses its FASTA and its `data/raw/<parent>_assembly_data_report.jsonl` (the first ancestor without a parent). Kraken2 and Kaiju indexes need `kraken2` or `kaiju` plus Samovar on `PATH`; without them the indexes and those colourings are skipped.
@@ -64,7 +64,32 @@ graph = load_bench_cdbg(bench_dir, namespaces=namespaces_for(("kraken2", "decayi
 
 `filter_colours(graph, namespace="kraken2")` is the same selection on a CFA, CDBG, or (by `color_ids`) a CGT.
 
-A column or colour namespace that carries an evaluation target (`truth_taxon_id`, `expected_action`, `genome_abundance`, a `truth` namespace) is rejected. Those values stay under `ground_truth/`.
+A column or colour namespace that carries an evaluation target (`truth_taxon_id`, `expected_action`, `genome_abundance`, a `truth` namespace, the gold `taxon` namespace) is rejected. Those values stay under `ground_truth/`.
+
+### Gold taxon labels
+
+Gold `taxon` is not a colour of a built graph, so no tool can train on it. A builder that hands `materialize` a CFA with a `taxon` namespace (the bubble benches `bubble_strain_2`, `bubble_error_1`, `bubble_nested_2`, `bubble_shared_2`, `bubble_strain_3_n50`) has those colours removed before any colouring runs and written to:
+
+| File | Columns |
+| --- | --- |
+| `ground_truth/taxon_nodes.tsv` | `node_id`, `taxon` (one row per CFA node) |
+| `ground_truth/taxon_edges.tsv` | `edge_id`, `source`, `target`, `taxon` (one row per CFA edge) |
+
+A `taxon` cell is a comma-separated list of gold values, empty when there is none. Evaluation (ParaGVAE, BubbleBlower, MetaMalevich) reads them like this:
+
+```python
+from metametro.bench import load_bench_gold, load_bench_gold_cgt
+
+gold = load_bench_gold(bench_dir)          # GoldLabels(namespace="taxon", values, nodes, edges)
+gold.nodes["S"]                            # ("taxon_1", "taxon_2"), keyed by CFA node id
+labels = load_bench_gold_cgt(bench_dir)    # a CGT whose only colours are the gold labels
+labels.node_colors                         # (num_nodes, len(gold.values)) uint8, column j = gold.values[j]
+labels.edge_colors                         # CSR edge order of load_bench_cgt(bench_dir)
+```
+
+`load_bench_gold_cgt` has the node and CSR edge order of `load_bench_cgt(bench_dir)`; a unitig's gold set is the union over its CFA members. It replaces `load_bench_cgt(bench_dir, namespaces=["taxon"])`, which no longer finds a `taxon` namespace. Use it for scoring only.
+
+On the bubble benches `decaying` therefore leaks `composition` (or `kraken2` / `kaiju` when that layer was painted), not gold taxon. On `mock_bubble`, `mock_chain`, `bubble_reads_2`, and `synthetic_reads_2` it leaks `sample`.
 
 ## Layout
 

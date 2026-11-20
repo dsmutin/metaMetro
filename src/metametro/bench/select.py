@@ -27,7 +27,8 @@ def namespaces_for(colourings: Sequence[str]) -> list[str]:
 
     ``as_built`` has no single namespace and is skipped here. Select those
     colours by naming the namespaces that the builder already wrote
-    (``taxon``, ``sample``, ``transport_type``, ``route``, ...).
+    (``sample``, ``transport_type``, ``route``, ...). Gold ``taxon`` is not a
+    colour namespace of a built graph; read it with ``load_bench_gold``.
     """
     found: list[str] = []
     missing: list[str] = []

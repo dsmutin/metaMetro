@@ -5,14 +5,50 @@ evidence. The restart term is what makes leaked mass decay with hop distance.
 CFA colours stay integer presence masks. A colour is kept when its mass is at
 least ``threshold`` after leakage; otherwise the argmax is kept when it is
 strictly positive.
+
+Decaying reads one source layer and never a gold namespace
+(``GOLD_NAMESPACES``, i.e. ``taxon``). Without an explicit ``source`` it takes
+the first of ``DECAY_SOURCES`` on the graph; when none is there it takes every
+namespace except gold, ``decaying``, and ``accession``.
 """
 
 from __future__ import annotations
 
-from metametro.contracts.colouring import paint_namespace
+from typing import Sequence
+
+from metametro.contracts.colouring import GOLD_NAMESPACES, paint_namespace
 from metametro.errors import ContractError
 from metametro.formats.cfa.model import CfaGraph
 from metametro.formats.cfa.validator import parse_color_set
+
+DECAY_SOURCES = ("sample", "kraken2", "kaiju", "composition")
+"""Default source layers for decaying, most preferred first."""
+
+_NEVER_SOURCE = frozenset({"decaying", "accession"})
+
+
+def decay_sources(cfa: CfaGraph, source: str | Sequence[str] | None = None) -> tuple[str, ...]:
+    """Return the colour namespaces decaying reads on ``cfa``.
+
+    An explicit ``source`` naming a gold namespace, ``decaying``, or
+    ``accession`` raises ``ContractError``. An empty tuple means no allowed
+    layer is on the graph.
+    """
+    present = []
+    for row in cfa.colors or []:
+        namespace = str(row.get("namespace", ""))
+        if namespace not in present:
+            present.append(namespace)
+    if source is not None:
+        wanted = (source,) if isinstance(source, str) else tuple(source)
+        bad = [name for name in wanted if name in GOLD_NAMESPACES or name in _NEVER_SOURCE]
+        if bad:
+            raise ContractError([f"decaying cannot read gold or derived colours: {', '.join(bad)}"])
+        return tuple(name for name in wanted if name in present)
+    for name in DECAY_SOURCES:
+        if name in present:
+            return (name,)
+    return tuple(name for name in present if name not in GOLD_NAMESPACES and name not in _NEVER_SOURCE)
 
 
 def normalize(weights: dict[int, float]) -> dict[int, float]:
@@ -108,10 +144,26 @@ def colour_decaying(
     iterations: int = 4,
     threshold: float = 0.5,
     operation: str = "merge",
+    source: str | Sequence[str] | None = None,
 ) -> CfaGraph:
-    """Paint a ``decaying`` namespace by leaking existing colour mass along edges."""
-    lookup = {int(row["color_id"]): str(row.get("value") or row["color_id"]) for row in cfa.colors or []}
-    distributions = {row["node_id"]: {color_id: 1.0 for color_id in parse_color_set(row.get("color_set", ""))} for row in cfa.nodes}
+    """Paint a ``decaying`` namespace by leaking one allowed colour layer along edges.
+
+    ``source`` picks the layer (see ``decay_sources``). Gold colours are never read.
+    """
+    namespaces = decay_sources(cfa, source)
+    if not namespaces:
+        raise ContractError(["decaying needs a non-gold colour layer on the graph"])
+    lookup = {
+        int(row["color_id"]): str(row.get("value") or row["color_id"])
+        for row in cfa.colors or []
+        if str(row.get("namespace", "")) in namespaces
+    }
+    distributions = {
+        row["node_id"]: {
+            color_id: 1.0 for color_id in parse_color_set(row.get("color_set", "")) if color_id in lookup
+        }
+        for row in cfa.nodes
+    }
     edges = [{"source": row["source"], "target": row["target"], "weight": 1.0} for row in cfa.edges]
     leaked = decaying_distributions(distributions, edges, decay=decay, iterations=iterations)
     node_values = {node_id: _keep(mass, lookup, threshold) for node_id, mass in leaked.items()}

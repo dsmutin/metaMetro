@@ -1,6 +1,7 @@
 """Stable identity of a built graph or of a pinned contract.
 
-The digest covers topology, sequence, and colour sets. It does not cover
+The digest covers topology, sequence, colour sets, and gold labels moved to
+``ground_truth/``. It does not cover
 unitig ids, dense ids, or filesystem paths.
 """
 
@@ -9,6 +10,8 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
+from typing import Sequence
+
 from metametro.formats.cfa.model import CfaGraph
 
 
@@ -16,8 +19,14 @@ def _colour(row: dict[str, str]) -> str:
     return row.get("color_set", row.get("colors", ""))
 
 
-def graph_identity(graph: CfaGraph, *, colourings: tuple[str, ...]) -> str:
-    """SHA-256 of the coloured CFA, independent of directory layout."""
+def graph_identity(
+    graph: CfaGraph, *, colourings: tuple[str, ...], ground_truth: Sequence[str] = ()
+) -> str:
+    """SHA-256 of the coloured CFA, independent of directory layout.
+
+    ``ground_truth`` lines (gold labels moved off the graph) are appended when
+    given, so two builds with different gold labels differ in identity.
+    """
     lines = [
         f"graph_id\t{graph.metadata.get('graph_id', '')}",
         f"graph_type\t{graph.metadata.get('graph_type', '')}",
@@ -34,6 +43,7 @@ def graph_identity(graph: CfaGraph, *, colourings: tuple[str, ...]) -> str:
         )
     for row in graph.colors or []:
         lines.append(f"palette\t{row.get('color_id', '')}\t{row.get('namespace', '')}\t{row.get('value', '')}")
+    lines.extend(ground_truth)
     payload = "\n".join(lines) + "\n"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 

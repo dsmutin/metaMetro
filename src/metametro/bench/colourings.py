@@ -7,12 +7,15 @@ the benchmark was written is applied on the next build. Colourings with
 
 Namespaces:
 
-- ``as_built`` keeps colours already on the graph (taxon, transit, roxel)
+- ``as_built`` keeps colours already on the graph (transit, roxel, samples).
+  Gold ``taxon`` colours are not kept: ``materialize`` moves them to
+  ``ground_truth/`` before any colouring runs (see ``metametro.bench.ground_truth``).
 - ``read_depth`` → ``sample``
 - ``composition_kmeans`` → ``composition`` (k-means of the CGT node features)
 - ``kraken2`` → ``kraken2``
 - ``kaiju`` → ``kaiju``
-- ``decaying`` → ``decaying``
+- ``decaying`` → ``decaying`` (leaks the first of ``sample``, ``kraken2``,
+  ``kaiju``, ``composition`` on the graph; never gold)
 - ``read_accession`` → ``accession`` (explicit only; simulated accessions leak truth)
 """
 
@@ -32,7 +35,7 @@ from metametro.contracts.classifiers import (
 from metametro.bench.features import node_feature_matrix
 from metametro.contracts.colouring import colour_by_read_accessions, colour_by_reads, paint_namespace
 from metametro.contracts.composition import kmeans_labels
-from metametro.contracts.decaying import colour_decaying
+from metametro.contracts.decaying import colour_decaying, decay_sources
 from metametro.formats.cfa.model import CfaGraph
 
 
@@ -122,10 +125,12 @@ def colouring_namespace(name: str) -> str | None:
 def applicable(graph: CfaGraph, ctx: BuildContext) -> tuple[Colouring, ...]:
     """Return colourings to run, honouring an explicit selection.
 
-    Without a selection, only automatic colourings available on ``graph`` are
-    returned. With a selection, every selected colouring is returned in order;
-    the caller checks availability on the graph as coloured so far and must
-    fail rather than skip one that cannot run.
+    Without a selection, every automatic colouring is returned in registration
+    order. The caller checks availability on the graph as coloured so far and
+    skips one that cannot run, so ``decaying`` sees the layers written before
+    it. With a selection, every selected colouring is returned in order and the
+    caller must fail rather than skip one that cannot run. ``graph`` is kept
+    for callers that pass it; it no longer filters the list.
     """
     if ctx.selected is None:
         chosen = {name: item for name, item in _REGISTRY.items() if item.auto}
@@ -137,8 +142,6 @@ def applicable(graph: CfaGraph, ctx: BuildContext) -> tuple[Colouring, ...]:
         from metametro.errors import ContractError
 
         raise ContractError([f"unknown colouring: {', '.join(missing)}"])
-    if ctx.selected is None:
-        return tuple(item for item in chosen.values() if item.available(graph, ctx))
     return tuple(chosen.values())
 
 
@@ -216,7 +219,7 @@ def _composition(graph: CfaGraph, ctx: BuildContext) -> CfaGraph:
 
 
 def _decaying_available(graph: CfaGraph, _ctx: BuildContext) -> bool:
-    return bool(graph.edges) and _already_coloured(graph)
+    return bool(graph.edges) and bool(decay_sources(graph))
 
 
 def _decaying(graph: CfaGraph, ctx: BuildContext) -> CfaGraph:

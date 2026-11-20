@@ -19,6 +19,11 @@ from metametro.formats.cfa.validator import parse_color_set, validate_cfa
 
 OPERATIONS = ("replace", "merge", "intersect", "subtract")
 
+GOLD_NAMESPACES = frozenset({"taxon"})
+"""Colour namespaces that hold gold labels. They are evaluation targets, not
+training colours: a bench build moves them to ``ground_truth/`` and the
+leakage guard rejects them on a built graph."""
+
 
 def combine_colors(existing: Iterable[int], incoming: Iterable[int], operation: str) -> list[int]:
     """Combine two colour sets. Unknown operations are rejected."""

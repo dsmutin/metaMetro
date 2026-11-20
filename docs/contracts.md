@@ -79,8 +79,10 @@ Other registered colourings write other namespaces and are not a breaking change
 | `composition_kmeans` | `composition` | k-means of the CGT node features of each unitig: canonical k-mer columns and `coverage` (default k=4, 8 clusters, seed 0). The `composition` columns of `node_colors` equal `kmeans_onehot(node_features, 8, 0)`. `colour_by_composition` is still public and clusters CFA node sequences. |
 | `kraken2` | `kraken2` | Contig taxids from Kraken2. Classifier evidence, not simulation truth. |
 | `kaiju` | `kaiju` | Contig taxids from Kaiju. |
-| `decaying` | `decaying` | Neighbour leakage of existing colour mass (decay 0.5, 4 iterations). A colour is kept when its mass is at least the threshold 0.5 (`decay_threshold` in `BuildContext`); otherwise the largest mass is kept when it is positive. |
+| `decaying` | `decaying` | Neighbour leakage of one allowed source layer (decay 0.5, 4 iterations): the first of `sample`, `kraken2`, `kaiju`, `composition` on the graph, or every non-gold namespace when none of those is there (`decay_sources`). `taxon`, `decaying`, and `accession` are never read; `colour_decaying(source="taxon")` raises `ContractError`. A colour is kept when its mass is at least the threshold 0.5 (`decay_threshold` in `BuildContext`); otherwise the largest mass is kept when it is positive. |
 | `read_accession` | `accession` | Read-id accession prefix. Explicit only. |
+
+Gold labels are not training colours. `GOLD_NAMESPACES` (`metametro.contracts.colouring`) is `{"taxon"}`. A bench build moves those colours to `ground_truth/taxon_nodes.tsv` and `ground_truth/taxon_edges.tsv` before any colouring runs, and the leakage guard (`assert_no_target_leak`) rejects a built CFA that still has a `taxon` namespace. Evaluation reads them with `metametro.bench.load_bench_gold` or `load_bench_gold_cgt` ([benchmarks](benchmarks.md#gold-taxon-labels)).
 
 `paint_namespace` allocates fresh colour ids so stacked namespaces do not collide. `filter_colours` keeps a subset of ids or namespaces.
 
