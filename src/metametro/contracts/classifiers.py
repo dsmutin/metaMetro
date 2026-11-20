@@ -82,7 +82,14 @@ def colour_from_calls(
     namespace: str,
     operation: str = "merge",
 ) -> CfaGraph:
-    """Paint taxid colours from a contig-id map. Missing ids stay uncoloured."""
+    """Paint taxid colours from a contig-id map. Missing ids stay uncoloured.
+
+    A non-empty map in which no id is a CFA node id raises ``ContractError``:
+    such a file belongs to another graph, and painting it would add an empty layer.
+    """
+    node_ids = {row["node_id"] for row in cfa.nodes}
+    if calls and not node_ids.intersection(calls):
+        raise ContractError([f"no sequence id in the {namespace} output is a CFA node id"])
     node_values = {row["node_id"]: [str(tax_id) for tax_id in calls.get(row["node_id"], [])] for row in cfa.nodes}
     by_node = {node_id: set(values) for node_id, values in node_values.items()}
     edge_values: dict[str, list[str]] = {}

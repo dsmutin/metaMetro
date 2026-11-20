@@ -417,6 +417,14 @@ def test_inprocess_build_reads_an_explicit_kraken2_output(tmp_path: Path) -> Non
     assert painted["S"] == set()
 
 
+
+def test_kraken2_output_from_another_graph_fails(tmp_path: Path) -> None:
+    """A Kraken2 file with no CFA node id is an error, not an empty ``kraken2`` layer."""
+    calls = tmp_path / "contigs.kraken"
+    calls.write_text("C\tother_1\t562\t6\t562:3\n", encoding="utf-8")
+    with pytest.raises(ContractError, match="no sequence id in the kraken2 output"):
+        build("bubble_strain_2", outdir=tmp_path / "out", colourings=("kraken2",), kraken_output=calls)
+
 def test_build_rejects_a_missing_classifier_path(tmp_path: Path) -> None:
     """A given classifier path that does not exist stops the build before any output."""
     out = tmp_path / "out"
