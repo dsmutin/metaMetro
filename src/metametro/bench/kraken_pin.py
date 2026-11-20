@@ -8,7 +8,10 @@ trimmed NCBI ``nodes.dmp`` and ``names.dmp`` with the lineage to root of every
 taxid in the output and in the gold labels; ``pinned_taxdump(name)`` returns it,
 so a resolver can read the taxa without the index. A build that was given
 no ``kraken_output`` or ``kraken_db`` paints the ``kraken2`` layer from the pin
-after checking that its own node FASTA has the pinned SHA-256.
+after checking that its own node FASTA has the pinned SHA-256. A pin with only
+one of ``nodes.kraken`` and ``kraken2.yaml``, or a ``taxdump/`` that the yaml does
+not record (or the reverse), is an error rather than no pin. The pins ship in
+the wheel as package data.
 """
 
 from __future__ import annotations
@@ -28,12 +31,18 @@ def kraken_pin(bench: str, *, pins: Path | None = None) -> tuple[Path, dict] | N
 
     root = (PINS if pins is None else Path(pins)) / resolve(bench).name / "kraken2"
     output = root / "nodes.kraken"
-    if not output.is_file():
+    record = root / "kraken2.yaml"
+    if not output.is_file() and not record.is_file():
         return None
-    meta = read_yaml(root / "kraken2.yaml")
+    if not output.is_file() or not record.is_file():
+        missing = output if not output.is_file() else record
+        raise ContractError([f"the Kraken2 pin {root} is incomplete: {missing.name} is missing"])
+    meta = read_yaml(record)
     if sha256_file(output) != meta["output_sha256"]:
-        raise ContractError([f"{output} does not have the SHA-256 pinned in {root / 'kraken2.yaml'}"])
+        raise ContractError([f"{output} does not have the SHA-256 pinned in {record}"])
     taxdump = meta.get("taxdump")
+    if not taxdump and (root / "taxdump").exists():
+        raise ContractError([f"the Kraken2 pin {root} has a taxdump/ folder but {record.name} has no taxdump block"])
     if taxdump:
         folder = root / taxdump["path"]
         for name in ("nodes", "names"):

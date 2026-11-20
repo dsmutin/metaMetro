@@ -12,7 +12,7 @@ from metametro.bench.kraken_pin import checked_kraken_pin, kraken_pin, pinned_ta
 from metametro.contracts.classifiers import colour_from_kraken2_file, parse_kraken2_output
 from metametro.errors import ContractError
 from metametro.formats.cfa.model import CfaGraph
-from metametro.tables import write_yaml
+from metametro.tables import read_yaml, write_yaml
 
 pytestmark = pytest.mark.mandatory
 
@@ -99,3 +99,46 @@ def test_pinned_taxdump_has_every_lineage_to_root() -> None:
     assert parent[1] == 1 and 1 in named
     assert len(parent) == kraken_pin("phage_10")[1]["taxdump"]["taxids"]
     assert pinned_taxdump("phage_species_5") is None
+
+
+def test_incomplete_pin_is_an_error(tmp_path: Path) -> None:
+    pins = _pin(tmp_path)
+    folder = pins / "phage_species_5_x10" / "kraken2"
+    (folder / "taxdump").mkdir()
+    with pytest.raises(ContractError, match="no taxdump block"):
+        kraken_pin("phage_10", pins=pins)
+    with pytest.raises(ContractError, match="no taxdump block"):
+        pinned_taxdump("phage_10", pins=pins)
+    (folder / "taxdump").rmdir()
+    meta = folder / "kraken2.yaml"
+    record = meta.read_text()
+    taxdump = {"path": "taxdump", "nodes_sha256": "0" * 64, "names_sha256": "0" * 64}
+    write_yaml(meta, {**read_yaml(meta), "taxdump": taxdump})
+    with pytest.raises(ContractError, match="nodes.dmp is missing"):
+        pinned_taxdump("phage_10", pins=pins)
+    meta.write_text(record)
+    (folder / "nodes.kraken").unlink()
+    with pytest.raises(ContractError, match="nodes.kraken is missing"):
+        kraken_pin("phage_10", pins=pins)
+    meta.unlink()
+    assert kraken_pin("phage_10", pins=pins) is None
+    _pin(tmp_path / "again")
+    (tmp_path / "again" / "pins" / "phage_species_5_x10" / "kraken2" / "kraken2.yaml").unlink()
+    with pytest.raises(ContractError, match="kraken2.yaml is missing"):
+        kraken_pin("phage_10", pins=tmp_path / "again" / "pins")
+
+
+def test_package_data_ships_every_pin_and_schema() -> None:
+    import tomllib
+
+    root = Path(__file__).resolve().parents[1]
+    package = root / "src" / "metametro"
+    globs = tomllib.loads((root / "pyproject.toml").read_text())["tool"]["setuptools"]["package-data"]["metametro"]
+    shipped = {path for pattern in globs for path in package.glob(pattern) if path.is_file()}
+    data = {
+        path
+        for path in package.rglob("*")
+        if path.is_file() and path.suffix not in {".py", ".pyc"} and "__pycache__" not in path.parts
+    }
+    assert data and data <= shipped
+    assert package / "bench/data/pins/phage_species_5_x10/kraken2/taxdump/nodes.dmp" in shipped
