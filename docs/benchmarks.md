@@ -150,3 +150,5 @@ Pinned NCBI communities and external contracts are in the same registry. `metame
 
 There is no ten-species phage benchmark. `phage_10` was the ten-times read budget. Strong100, samovar10, and the prebuilt ONT and Illumina bundles are not in this registry.
 
+The phage build runs MEGAHIT with one thread. With several threads MEGAHIT writes the same contigs in a different order on each run, so the graph identity would change between two builds of the same reads.
+

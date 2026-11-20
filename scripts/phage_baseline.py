@@ -143,7 +143,7 @@ def main() -> int:
     if not args.skip_assemble:
         if asm_dir.exists():
             raise SystemExit(f"refusing to reuse {asm_dir}; delete it or pass --skip-assemble")
-        run_command(megahit_command(reads_path, asm_dir, k=args.k, megahit=args.megahit, min_count=2))
+        run_command(megahit_command(reads_path, asm_dir, k=args.k, threads=1, megahit=args.megahit, min_count=2))
     intermediate = asm_dir / "intermediate_contigs" / f"k{args.k}.contigs.fa"
     if not intermediate.is_file():
         raise SystemExit(f"missing MEGAHIT intermediate graph: {intermediate}")
