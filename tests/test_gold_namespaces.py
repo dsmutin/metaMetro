@@ -153,3 +153,38 @@ def test_a_bench_built_before_gold_namespaces_must_be_rebuilt(tmp_path: Path) ->
         with pytest.raises(ContractError, match="rebuild the bench"):
             load(tmp_path / "mock")
     assert bench_gold_namespaces(tmp_path / "no_manifest") == frozenset({"taxon"})
+
+
+def _plain_cfa(**extra: object) -> "CfaGraph":
+    from metametro.formats.cfa.model import CfaGraph
+
+    base = {
+        "metadata": {"schema_version": "1.0", "graph_id": "toy", "graph_type": "de_bruijn", "k": 3},
+        "sequences": {"n1": "ACGT"},
+        "nodes": [{"node_id": "n1"}],
+        "edges": [],
+        "node_header": ["node_id"],
+        "edge_header": ["edge_id", "source", "target"],
+    }
+    base.update(extra)
+    return CfaGraph(**base)
+
+
+def test_guard_rejects_a_label_dictionary_in_a_gold_namespace() -> None:
+    from metametro.bench.leakage import assert_no_target_leak
+    from metametro.errors import ContractError
+
+    graph = _plain_cfa(labels=[{"label_id": "0", "namespace": "genome", "value": "genome_001"}])
+    with pytest.raises(ContractError, match="CFA label namespace genome"):
+        assert_no_target_leak(graph, gold_namespaces=("taxon", "genome"))
+    assert_no_target_leak(graph, gold_namespaces=("taxon",))
+
+
+def test_guard_rejects_a_column_named_after_a_gold_namespace() -> None:
+    from metametro.bench.leakage import assert_no_target_leak
+    from metametro.errors import ContractError
+
+    graph = _plain_cfa(nodes=[{"node_id": "n1", "route": "bus:1"}], node_header=["node_id", "route"])
+    with pytest.raises(ContractError, match="CFA column route"):
+        assert_no_target_leak(graph, gold_namespaces=("transport_type", "route"))
+    assert_no_target_leak(graph, gold_namespaces=("taxon",))
