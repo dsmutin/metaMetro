@@ -9,6 +9,7 @@ from metametro.contracts.colour_filter import filter_colours
 from metametro.converters.cdbg_to_cgt import cdbg_to_cgt
 from metametro.converters.cfa_to_cdbg import cfa_to_cdbg
 from metametro.errors import ContractError
+from metametro.bench.data.universal.bubbles import strain_bubble
 from metametro.fixtures import chain_cdbg, mock_cfa, mock_cgt
 from metametro.formats.cdbg.validator import validate_cdbg
 from metametro.identity import cgt_edge_cfa_ids
@@ -93,3 +94,20 @@ def test_unknown_colour_and_cgt_namespace_are_rejected() -> None:
         filter_colours(mock_cgt(), namespace="sample")
     with pytest.raises(ContractError, match="requires color_ids or namespace"):
         filter_colours(mock_cfa())
+
+
+def test_missing_namespace_is_an_error_and_present_taxon_filters() -> None:
+    """A missing namespace is an error; gold taxon points to load_bench_gold; a raw taxon layer still filters."""
+    graph = mock_cfa()
+    with pytest.raises(ContractError, match="has no rows in the colour dictionary"):
+        filter_colours(graph, namespace="kraken2")
+    with pytest.raises(ContractError, match="load_bench_gold"):
+        filter_colours(graph, namespace="taxon")
+    with pytest.raises(ContractError, match="load_bench_gold"):
+        filter_colours(graph, namespaces=("sample", "taxon"))
+    raw = strain_bubble()
+    filtered = filter_colours(raw, namespace="taxon")
+    assert {row["namespace"] for row in filtered.colors or []} == {"taxon"}
+    assert {row["color_id"] for row in filtered.colors or []} == {row["color_id"] for row in raw.colors or []}
+    cdbg = filter_colours(cfa_to_cdbg(raw), namespaces=("taxon",))
+    assert {row["namespace"] for row in cdbg.colors or []} == {"taxon"}

@@ -18,6 +18,7 @@ from typing import Sequence
 
 import numpy as np
 
+from metametro.contracts.colouring import GOLD_NAMESPACES
 from metametro.errors import ContractError
 from metametro.formats.cdbg.model import Cdbg
 from metametro.formats.cdbg.validator import validate_cdbg
@@ -39,8 +40,12 @@ def filter_colours(
     Pass ``color_ids``, ``namespace``, ``namespaces``, or a combination.
     ``namespace`` and ``namespaces`` together are rejected. Several
     namespaces are a union. ``color_ids`` with a namespace is the
-    intersection. A CGT has no namespace dictionary; pass ``color_ids``
-    there. The input graph is not modified.
+    intersection. A requested namespace with no rows in the colour
+    dictionary raises ``ContractError``. If that name is in
+    ``GOLD_NAMESPACES`` (``taxon``), the message points to
+    ``load_bench_gold``. A graph that does carry ``taxon`` is filtered as
+    usual. A CGT has no namespace dictionary; pass ``color_ids`` there.
+    The input graph is not modified.
     """
     if namespace is not None and namespaces is not None:
         raise ContractError(["pass namespace or namespaces, not both"])
@@ -93,6 +98,8 @@ def _keep_ids(
     dictionary = _dictionary(rows)
     if namespace is not None:
         in_namespace = {color_id for color_id, row_namespace in dictionary.items() if row_namespace == namespace}
+        if not in_namespace:
+            raise ContractError([_missing_namespace_message(namespace)])
     else:
         in_namespace = set(dictionary)
     if requested is None:
@@ -107,6 +114,12 @@ def _keep_ids(
                 [f"color_id {color_id} is not in namespace {namespace}" for color_id in outside]
             )
     return set(requested) & in_namespace if rows is not None else set(requested)
+
+
+def _missing_namespace_message(namespace: str) -> str:
+    if namespace in GOLD_NAMESPACES:
+        return f"{namespace} is gold ground truth, not a colour namespace; read it with load_bench_gold"
+    return f"colour namespace {namespace} has no rows in the colour dictionary"
 
 
 def _id_list(color_ids: Sequence[int]) -> list[int]:
