@@ -235,7 +235,7 @@ The columns use two vocabularies:
 | `class`, `branch_genomes`, `branch_species` | absent | present |
 | `bubble_id` | BubbleBlower's signature | BubbleBlower's signature, computed on the oriented sequences (a reverse-strand branch is hashed as its reverse complement) |
 
-BubbleBlower's own `detect_bubbles` reads links without orientation and finds none of these: on this graph it reports 20 pairs of parallel links with empty branches.
+Since BubbleBlower 0.15.0, its `detect_bubbles` reads links with their orientation and finds these bubbles (BubbleBlower's parity test, #1190). Earlier versions read links without orientation and found none of them; on this graph they reported 20 pairs of parallel links with empty branches.
 
 ### Phage Kraken2 layer
 
