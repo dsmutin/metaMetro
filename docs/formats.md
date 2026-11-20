@@ -186,6 +186,27 @@ CSR stays canonical because every feature, label, and colour row is defined on a
 
 On-disk arrays are NumPy `.npy` files. That choice is not part of the logical contract. Predictions are not files in the CGT directory.
 
+`dump_cgt` writes and `load_cgt` reads this directory:
+
+```text
+cgt/
+  metadata.yaml             required  feature names, registries, topology: csr
+  indptr.npy                required  CSR row pointer, length N+1
+  indices.npy               required  CSR targets, length E
+  node_features.npy         required  X_node, float32 (N, F_v)
+  edge_features.npy         required  X_edge, float32 (E, F_e)
+  node_colors.npy           required  C_node, uint8 (N, S)
+  edge_colors.npy           required  C_edge, uint8 (E, S)
+  mapping.tsv               required  dense_id, source_id, cfa_node_ids (comma-separated)
+  color_ids.tsv             written   column, color_id: colour column i is color_id
+  node_labels.npy           optional  y_node, int64 (N,)
+  edge_labels.npy           optional  y_edge, int64 (E,)
+  node_color_weights.npy    optional  float32 (N, S), same columns as C_node
+  edge_color_weights.npy    optional  float32 (E, S), same columns as C_edge
+```
+
+A missing required file raises `ContractError`. `dump_cgt` removes a stale weights file when the graph has no weight channel.
+
 ## Edit proposals
 
 An edit proposal is not a fourth graph format. A model that reads a CGT builds an `EditProposal` and does not write the CDBG or the CFA. `apply_edit_proposal` returns a new CDBG. The input object stays as it was. An invalid proposal raises `ContractError` and returns nothing.
