@@ -37,6 +37,7 @@ from metametro.converters.cfa_to_cdbg import cfa_to_cdbg
 from metametro.formats.cfa.io import dump_cfa
 from metametro.formats.cdbg.io import dump_cdbg
 from metametro.formats.cgt.io import dump_cgt
+from metametro.formats.cgt.registry import build_feature_registry
 from metametro.tables import write_tsv
 
 _COMPLEMENT = str.maketrans("ACGTN", "TGCAN")
@@ -185,6 +186,9 @@ def main() -> int:
     degree = np.diff(cgt.indptr).astype(np.float32).reshape(-1, 1)
     cgt.node_features = degree
     cgt.metadata["node_feature_names"] = ["out_degree"]
+    cgt.metadata["node_feature_registry"] = build_feature_registry(
+        ["out_degree"], explicit_count=1, positional=False, annotation_sources=()
+    )
     dump_cgt(cgt, work / "cgt")
     numpy_result = run_ds(cgt, epochs=args.epochs, seed=1, backend="numpy")
     junctions = strand_junction_counts(graph.edges)
