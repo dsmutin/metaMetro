@@ -105,6 +105,7 @@ jobs:
           samovar --version
           metametro benchbuild phage_10 --outdir "$RUNNER_TEMP/phage_10"
           python scripts/check_phage10_solve.py identity "$RUNNER_TEMP/phage_10"
+          METAMETRO_PHAGE10_DIR="$RUNNER_TEMP/phage_10" pytest -q -rs tests/test_phage10_built.py tests/test_check_phage10_solve.py
       - name: Check out metaMalevich at the pinned commit
         run: |
           git clone https://github.com/dsmutin/metaMalevich.git "$RUNNER_TEMP/metaMalevich"

@@ -1,4 +1,9 @@
-"""Mandatory: canonical identities match the docs and the in-process builds. No network."""
+"""Mandatory: canonical identities match the docs and the in-process builds. No network.
+
+phage_10 needs MEGAHIT and Samovar, so no mandatory test rebuilds it: the CI job
+``phage10-solve`` (``.github/workflows/full-tests.yml``) builds it and checks its
+identity and gold digest, then runs ``tests/test_phage10_built.py`` on that build.
+"""
 
 from __future__ import annotations
 
