@@ -170,7 +170,8 @@ def _split(cell: str) -> tuple[str, ...]:
 def check_gold_digest(outdir: Path) -> None:
     """Raise ``ContractError`` when ``ground_truth/`` is not the gold this bench must have.
 
-    The files must match ``gold.sha256``. When ``manifest.yaml`` is a built
+    The files must match ``gold.sha256``, and ``gold_sha256`` in
+    ``manifest.yaml``, when recorded, must be its digest. When ``manifest.yaml`` is a built
     bench with a ``canonical_gold``, ``gold.sha256`` must exist and the digest of the
     files must equal it, so a stale but self-consistent ``ground_truth/`` from
     an older MetaMetro is refused. Another bench built before ``gold.sha256``
@@ -202,6 +203,11 @@ def check_gold_digest(outdir: Path) -> None:
         changed = sorted({line.split("  ", 1)[1] for line in written ^ current})
         raise ContractError(
             [f"{outdir} ground_truth/ does not match gold.sha256 ({', '.join(changed)}); rebuild the bench"]
+        )
+    recorded = manifest.get("gold_sha256")
+    if recorded and recorded != gold_digest(outdir):
+        raise ContractError(
+            [f"{outdir} manifest.yaml gold_sha256 {recorded} is not the digest of gold.sha256; rebuild the bench"]
         )
     if expected and gold_digest(outdir) != expected:
         raise ContractError(

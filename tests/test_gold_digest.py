@@ -90,6 +90,12 @@ def test_stale_self_consistent_phage_gold_is_refused_on_load_and_reuse(tmp_path:
     for load in (check_gold_digest, load_bench_gold, load_bench_gold_bubbles):
         with pytest.raises(ContractError, match="not the canonical phage_species_5_x10 gold"):
             load(stale)
+    from metametro.tables import write_yaml
+
+    current = read_yaml(stale / "manifest.yaml")
+    write_yaml(stale / "manifest.yaml", current | {"gold_sha256": "0" * 64})
+    with pytest.raises(ContractError, match="is not the digest of gold.sha256"):
+        load_bench_gold(stale)
     (stale / "gold.sha256").unlink()
     with pytest.raises(ContractError, match="has no gold.sha256"):
         load_bench_gold_bubbles(stale)
