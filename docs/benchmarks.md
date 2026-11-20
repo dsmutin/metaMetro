@@ -27,7 +27,7 @@ It is relative to the root of the MetaMetro checkout, not to the current directo
 | Path | Role |
 | --- | --- |
 | `cfa/`, `cdbg/`, `cgt/` | The three graph structures |
-| `ground_truth/` | Evaluation labels. Not a model input. `mock_bubble` and `mock_chain` have none. On the five hand-built bubble benches it also holds the gold taxon labels, `taxon_nodes.tsv` and `taxon_edges.tsv` (see below) |
+| `ground_truth/` | Evaluation labels. Not a model input. `mock_bubble` and `mock_chain` have none. On the five hand-built bubble benches and the two phage benches it also holds the gold taxon labels, `taxon_nodes.tsv` and `taxon_edges.tsv` (see below) |
 | `genomes/`, `reads/` | Read benchmarks (`bubble_reads_2`, `synthetic_reads_2`): the simulated genomes and the reads with their metadata |
 | `contract/` | Community and external benchmarks: the accession pin or tool parameters |
 | `work/` | Community and external benchmarks after download and assembly: downloads, assembly, classifier databases and outputs |
@@ -180,5 +180,9 @@ metametro benchfetch phage_10 --genome-dir DIR
 phage_species_5_x10 is missing pinned genome FASTA under <checkout>/data/raw/genomes: T1 (NC_005833.1), T3 (NC_003298.1), T4 (NC_000866.4), T5 (NC_005859.1), T7 (NC_001604.1); fetch them with: metametro benchfetch phage_species_5_x10
 ```
 
-A changed file is listed as `differs from the pinned SHA-256`, and the command gets `--force`. Then the build checks for `samovar`, `megahit`, and `megahit_toolkit` on `PATH`. `phage_species_5_x10` built from these genomes has identity `3d1ce381d23e1bcaca0cb139091c85da01af455315df881475e48070e861dbee` (983 CFA nodes, 1270 edges; SAMOVAR 0.12.150, MEGAHIT 1.2.9).
+A changed file is listed as `differs from the pinned SHA-256`, and the command gets `--force`. Then the build checks for `samovar`, `megahit`, and `megahit_toolkit` on `PATH`. `phage_species_5_x10` built from these genomes has identity `af194d92c03bf4e5f1611b0fcae356271ad3caa5e26d2282f15e777a4019e17a` (983 CFA nodes, 1270 edges; SAMOVAR 0.12.150, MEGAHIT 1.2.9).
+
+### Phage gold labels
+
+A phage build writes gold `taxon` labels to `ground_truth/taxon_nodes.tsv` and `taxon_edges.tsv` (`metametro.bench.phage_gold`). A CFA node gets the pinned genome that contains a strict majority of its k-mers (k = 21, both strands), the same rule as the `node_labels` of `scripts/phage_baseline.py`; any other node is empty. The value is that genome's species taxid from `genomes.tsv`. An edge gets the label its two ends share. `ground_truth/taxon_values.tsv` names each value: `taxon`, `rank` (`species`), `name`, `genome`, `accession`, and `record_taxid`. The labels are for scoring only and are not a colour of any graph. On `phage_species_5_x10`, 903 of 983 nodes and 440 of 1270 edges have a label (T4 389, T5 177, T7 163, T3 156, T1 18 nodes). The gold labels are part of the identity, so it changed from `3d1ce381…` to the value above; the CFA, CDBG, and CGT files did not change.
 

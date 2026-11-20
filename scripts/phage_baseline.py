@@ -16,6 +16,7 @@ from pathlib import Path
 
 import numpy as np
 
+from metametro.bench.phage_gold import node_genomes
 from metametro.contracts.assembly import (
     directed_bubble_sources,
     fastg_to_cfa,
@@ -40,8 +41,6 @@ from metametro.formats.cgt.io import dump_cgt
 from metametro.formats.cgt.registry import build_feature_registry
 from metametro.tables import write_tsv
 
-_COMPLEMENT = str.maketrans("ACGTN", "TGCAN")
-
 
 def _assign_read(read_id: str, genome_ids: list[str]) -> tuple[str, str]:
     """Map a Samovar read id such as ``T1_0_0/1`` to one genome token."""
@@ -63,28 +62,8 @@ def _labels(sequences: dict[str, str], genomes: dict[str, str], k: int) -> tuple
     """Label a node by the genome that owns a strict majority of its k-mers."""
     names = sorted(genomes)
     label_of = {name: position + 1 for position, name in enumerate(names)}
-    genome_kmers: dict[str, set[str]] = {}
-    for name, sequence in genomes.items():
-        strands = (sequence, sequence.translate(_COMPLEMENT)[::-1])
-        kmers: set[str] = set()
-        for strand in strands:
-            if len(strand) >= k:
-                kmers.update(strand[offset : offset + k] for offset in range(len(strand) - k + 1))
-        genome_kmers[name] = kmers
-    labels = {}
-    for node_id, sequence in sequences.items():
-        if len(sequence) < k:
-            labels[node_id] = 0
-            continue
-        kmers = [sequence[offset : offset + k] for offset in range(len(sequence) - k + 1)]
-        counts = [sum(kmer in genome_kmers[name] for kmer in kmers) for name in names]
-        best = max(counts) if counts else 0
-        winners = [position for position, count in enumerate(counts) if count == best and count > 0]
-        if len(winners) == 1 and best * 2 > len(kmers):
-            labels[node_id] = label_of[names[winners[0]]]
-        else:
-            labels[node_id] = 0
-    return names, labels
+    owners = node_genomes(sequences, genomes, k)
+    return names, {node_id: label_of.get(owner, 0) for node_id, owner in owners.items()}
 
 
 def main() -> int:

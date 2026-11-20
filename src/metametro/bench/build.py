@@ -450,9 +450,12 @@ def _external(
         coloured = destination / "work" / "coloured_cfa"
         if not coloured.is_dir():
             raise ContractError(["phage baseline did not write coloured_cfa"])
-        graph = load_cfa(coloured)
+        from metametro.bench.phage_gold import paint_phage_gold, write_taxon_values
+
+        graph = paint_phage_gold(load_cfa(coloured), spec.name, genomes, spec.k)
         ctx = classifiers.context(colourings)
         made = materialize(graph, destination, ctx)
+        write_taxon_values(destination, spec.name)
         _finish_manifest(
             spec,
             destination,
