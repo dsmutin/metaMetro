@@ -1,6 +1,6 @@
 # Benchmarks
 
-`metametro benchbuild` is the only place a benchmark graph is generated. Other tools depend on the directory it writes. They do not keep a second copy of the generator.
+`metametro benchbuild` generates every registered benchmark graph. Other tools depend on the directory it writes. They do not keep a second copy of the generator. `scripts/phage_baseline.py` is a second, older phage generator outside `benchbuild`; the registered benchmark for the same five phages is `phage_species_5`.
 
 Strong100, the samovar10 bundles, and the prebuilt ONT and Illumina CSR dumps are not benchmarks here. They are frozen assemblies without a generator in this repository.
 
@@ -14,7 +14,7 @@ metametro benchbuild bubble_strain_2 --outdir /path/to/empty_dir
 metametro benchbuild bubble_strain_2 --colouring as_built
 ```
 
-`--all` builds every in-process graph and writes a contract for every community and external benchmark. It does not download genomes or call R. `--all --execute` also downloads and assembles those. A single benchmark is different: `metametro benchbuild <name>` downloads and assembles by default, and `--contract-only` writes only the contract. `--execute` has an effect only together with `--all`. A directory that already has `manifest.yaml` and `identity.sha256` is left unchanged.
+`--all` builds every in-process graph and writes a contract for every community and external benchmark. It does not download genomes or call R. `--all --execute` also downloads and assembles those. A single benchmark is different: `metametro benchbuild <name>` downloads and assembles by default, and `--contract-only` writes only the contract. `--execute` has an effect only together with `--all`. `--all` skips a directory that already has `manifest.yaml` and `identity.sha256`, leaves it unchanged, and prints its status as `present`. A single `metametro benchbuild <name>` into a directory that is not empty stops with `ContractError` (`output directory is not empty`); so does `--all` on a non-empty directory that lacks one of those two files.
 
 The default output directory is
 
@@ -27,13 +27,16 @@ It is relative to the root of the MetaMetro checkout, not to the current directo
 | Path | Role |
 | --- | --- |
 | `cfa/`, `cdbg/`, `cgt/` | The three graph structures |
-| `ground_truth/` | Evaluation labels. Not a model input |
+| `ground_truth/` | Evaluation labels. Not a model input. `mock_bubble` and `mock_chain` have none |
+| `genomes/`, `reads/` | Read benchmarks (`bubble_reads_2`, `synthetic_reads_2`): the simulated genomes and the reads with their metadata |
+| `contract/` | Community and external benchmarks: the accession pin or tool parameters |
+| `work/` | Community and external benchmarks after download and assembly: downloads, assembly, classifier databases and outputs |
 | `manifest.yaml` | Bench name, colourings, identity; on an assembled NCBI community also `tools`, the `--version` line of megahit, kraken2, kaiju, minimap2, and samovar (`absent` when not on `PATH`), also written to `work/commands.log`. Not part of the identity |
 | `identity.sha256` | Digest of sequences, topology, and colour sets |
 
 The CGT carries a feature layer in `node_features.npy`, separate from colours: for each unitig, L2-normalised canonical k-mer counts (`kmer:k4:<kmer>`, 136 columns at the default `k=4`) when every unitig has a sequence, and `coverage`, the mean CFA node coverage of the unitig, when the CFA has a `coverage` column. It adds no colour namespace and does not change `node_colors` or `identity.sha256`. `manifest.yaml` records `features.kmer_k`. `load_bench_cgt(outdir)` rebuilds the same layer; `load_bench_cgt(outdir, features=False)` gives an empty feature matrix.
 
-Every colouring registered in `metametro.bench.colourings` that can run is applied, including a colouring added after the benchmark was introduced. `--colouring` restricts that set and runs the named colourings in order. Each one is checked against the graph as coloured so far, and one that cannot run stops the build with an error instead of being skipped. `metametro benchbuild --list-colourings` prints the registry.
+Every colouring registered in `metametro.bench.colourings` that can run is applied, including a colouring added after the benchmark was introduced. `--colouring` restricts that set and runs the named colourings in order. It works only for a single benchmark: `--all --colouring` is a parser error. Each one is checked against the graph as coloured so far, and one that cannot run stops the build with an error instead of being skipped. `metametro benchbuild --list-colourings` prints the registry.
 
 | Colouring | Namespace | Auto | When it runs |
 | --- | --- | --- | --- |
@@ -67,7 +70,7 @@ Generation code:
 
 ```text
 src/metametro/bench/data/universal/     shared builders
-src/metametro/bench/data/{bench_name}/  one benchmark, when the name is a Python module
+src/metametro/bench/data/pins/{bench_name}/  accession pin of one NCBI community
 ```
 
 Scoring code:
@@ -76,7 +79,7 @@ Scoring code:
 src/metametro/bench/scoring/assembly/universal/
 src/metametro/bench/scoring/assembly_binning/universal/
 src/metametro/bench/scoring/profiling/universal/
-src/metametro/bench/scoring/{type}/{bench_name}/
+src/metametro/bench/scoring/{type}/{bench_name}.py   scorer for one benchmark, e.g. assembly/bubble_strain_2.py
 ```
 
 `assembly_binning` is the contig-binning score used by ParaGVAE (majority-label contig F1) plus AMBER sequence F1. AMBER is `amber.py` from [CAMI-challenge/AMBER](https://github.com/CAMI-challenge/AMBER) tag `v2.0.17-beta` (`089ea20e83811e090ab69814e033adc9fc963892`). Set `AMBER_SRC` to that checkout, or put `amber.py` on `PATH`. The required tests do not call it. `profiling` is the abundance score (L1, Bray–Curtis, presence F1). `assembly` is a length summary such as N50. A scorer reads `ground_truth/` and a prediction table. It does not read a target out of the feature matrix.

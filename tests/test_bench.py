@@ -138,6 +138,14 @@ def test_cli_benchbuild_list(capsys: pytest.CaptureFixture[str]) -> None:
     assert "bubble_strain_2" in capsys.readouterr().out
 
 
+def test_cli_benchbuild_all_rejects_colouring(capsys: pytest.CaptureFixture[str]) -> None:
+    """``metametro benchbuild --all --colouring NAME`` is a parser error, not a silent no-op."""
+    with pytest.raises(SystemExit) as exc:
+        main(["benchbuild", "--all", "--colouring", "as_built"])
+    assert exc.value.code == 2
+    assert "--all does not take --colouring" in capsys.readouterr().err
+
+
 def test_cli_list_colourings(capsys: pytest.CaptureFixture[str]) -> None:
     """``metametro benchbuild --list-colourings`` names the migrated colourings."""
     assert main(["benchbuild", "--list-colourings"]) == 0

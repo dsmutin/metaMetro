@@ -66,6 +66,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--all does not take a benchmark name")
     if args.all and args.outdir is not None:
         parser.error("--all writes each benchmark under data/bench")
+    if args.all and args.colouring:
+        parser.error("--all does not take --colouring; it applies every colouring that can run")
     if args.all:
         results = build_all(
             execute=args.execute and not args.contract_only, gtfs=args.gtfs, **classifiers
